@@ -341,372 +341,247 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid - Row 1: Leads */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2">
-          <Card>
-            <CardContent className="p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-1">Total Leads</p>
-                  <p className="text-xl font-bold">{stats.totalLeads}</p>
-                </div>
-                <Users className="h-5 w-5 text-blue-500/20" />
+        <Card className="border-t-4 border-t-blue-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Lead Statistics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
+              <div className="p-3 rounded-lg bg-blue-50 border border-blue-100">
+                <p className="text-[11px] text-muted-foreground mb-1">Total Leads</p>
+                <p className="text-xl font-bold">{stats.totalLeads}</p>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-1">New Leads</p>
-                  <p className="text-xl font-bold text-orange-600">{stats.newLeads}</p>
-                </div>
-                <AlertCircle className="h-5 w-5 text-orange-500/20" />
+              <div className="p-3 rounded-lg bg-orange-50 border border-orange-100">
+                <p className="text-[11px] text-muted-foreground mb-1">New Leads</p>
+                <p className="text-xl font-bold text-orange-600">{stats.newLeads}</p>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-1">Converted</p>
-                  <p className="text-xl font-bold text-green-600">{stats.convertedLeads}</p>
-                </div>
-                <CheckCircle className="h-5 w-5 text-green-500/20" />
+              <div className="p-3 rounded-lg bg-green-50 border border-green-100">
+                <p className="text-[11px] text-muted-foreground mb-1">Converted</p>
+                <p className="text-xl font-bold text-green-600">{stats.convertedLeads}</p>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-1">Conv. Rate</p>
-                  <p className="text-xl font-bold text-purple-600">
-                    {stats.totalLeads > 0 ? ((stats.convertedLeads / stats.totalLeads) * 100).toFixed(1) : 0}%
-                  </p>
-                </div>
-                <TrendingUp className="h-5 w-5 text-purple-500/20" />
+              <div className="p-3 rounded-lg bg-purple-50 border border-purple-100">
+                <p className="text-[11px] text-muted-foreground mb-1">Conv. Rate</p>
+                <p className="text-xl font-bold text-purple-600">
+                  {stats.totalLeads > 0 ? ((stats.convertedLeads / stats.totalLeads) * 100).toFixed(1) : 0}%
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats Grid - Row 2: Projects */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2">
-          <Card>
-            <CardContent className="p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-1">Total Projects</p>
-                  <p className="text-xl font-bold">{stats.totalProjects}</p>
-                </div>
-                <Briefcase className="h-5 w-5 text-indigo-500/20" />
+        <Card className="border-t-4 border-t-indigo-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Project Statistics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
+              <div className="p-3 rounded-lg bg-indigo-50 border border-indigo-100">
+                <p className="text-[11px] text-muted-foreground mb-1">Total Projects</p>
+                <p className="text-xl font-bold">{stats.totalProjects}</p>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-1">Active</p>
-                  <p className="text-xl font-bold text-blue-600">{stats.activeProjects}</p>
-                </div>
-                <TrendingUp className="h-5 w-5 text-blue-500/20" />
+              <div className="p-3 rounded-lg bg-blue-50 border border-blue-100">
+                <p className="text-[11px] text-muted-foreground mb-1">Active</p>
+                <p className="text-xl font-bold text-blue-600">{stats.activeProjects}</p>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-1">Completed</p>
-                  <p className="text-xl font-bold text-green-600">{stats.completedProjects}</p>
-                </div>
-                <CheckCircle className="h-5 w-5 text-green-500/20" />
+              <div className="p-3 rounded-lg bg-green-50 border border-green-100">
+                <p className="text-[11px] text-muted-foreground mb-1">Completed</p>
+                <p className="text-xl font-bold text-green-600">{stats.completedProjects}</p>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-1">On Track %</p>
-                  <p className="text-xl font-bold text-blue-600">
-                    {stats.totalProjects > 0 ? ((stats.completedProjects / stats.totalProjects) * 100).toFixed(0) : 0}%
-                  </p>
-                </div>
-                <CheckCircle className="h-5 w-5 text-blue-500/20" />
+              <div className="p-3 rounded-lg bg-cyan-50 border border-cyan-100">
+                <p className="text-[11px] text-muted-foreground mb-1">On Track %</p>
+                <p className="text-xl font-bold text-cyan-600">
+                  {stats.totalProjects > 0 ? ((stats.completedProjects / stats.totalProjects) * 100).toFixed(0) : 0}%
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Stats Grid - Row 3: Payments */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2">
-          <Card>
-            <CardContent className="p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-1">Total Payments</p>
-                  <p className="text-xl font-bold">{stats.totalPayments}</p>
-                </div>
-                <DollarSign className="h-5 w-5 text-green-500/20" />
+        <Card className="border-t-4 border-t-green-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Payment Statistics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
+              <div className="p-3 rounded-lg bg-green-50 border border-green-100">
+                <p className="text-[11px] text-muted-foreground mb-1">Total Payments</p>
+                <p className="text-xl font-bold">{stats.totalPayments}</p>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-1">Total Amount</p>
-                  <p className="text-lg font-bold">₹{(stats.totalAmount || 0).toLocaleString('en-IN')}</p>
-                </div>
-                <DollarSign className="h-5 w-5 text-indigo-500/20" />
+              <div className="p-3 rounded-lg bg-indigo-50 border border-indigo-100">
+                <p className="text-[11px] text-muted-foreground mb-1">Total Amount</p>
+                <p className="text-lg font-bold">₹{(stats.totalAmount || 0).toLocaleString('en-IN')}</p>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-1">Received</p>
-                  <p className="text-lg font-bold text-green-600">₹{(stats.paidAmount || 0).toLocaleString('en-IN')}</p>
-                </div>
-                <CheckCircle className="h-5 w-5 text-green-500/20" />
+              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-100">
+                <p className="text-[11px] text-muted-foreground mb-1">Received</p>
+                <p className="text-lg font-bold text-emerald-600">₹{(stats.paidAmount || 0).toLocaleString('en-IN')}</p>
               </div>
-            </CardContent>
-          </Card>
 
-          <Card>
-            <CardContent className="p-3">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-1">Remaining</p>
-                  <p className="text-lg font-bold text-orange-600">₹{(stats.pendingAmount || 0).toLocaleString('en-IN')}</p>
-                </div>
-                <AlertCircle className="h-5 w-5 text-orange-500/20" />
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
+                <p className="text-[11px] text-muted-foreground mb-1">Remaining</p>
+                <p className="text-lg font-bold text-amber-600">₹{(stats.pendingAmount || 0).toLocaleString('en-IN')}</p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Recent Leads Section */}
-        <div>
-          <h2 className="text-lg font-heading font-bold mb-2">Recent Leads</h2>
-          <Card>
-            <CardContent className="p-0">
-              {leads.length === 0 ? (
-                <div className="p-4 text-center text-xs text-muted-foreground">No recent leads</div>
-              ) : (
-                <div className="divide-y">
+        <Card className="border-t-4 border-t-cyan-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Recent Leads</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {leads.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground">No recent leads</p>
+            ) : (
+              <div className="overflow-x-auto pb-2">
+                <div className="flex gap-3 min-w-min">
                   {leads.map((lead) => (
-                    <div key={lead.id} className="p-3 hover:bg-muted/50 transition-colors">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
+                    <Card key={lead.id} className="flex-shrink-0 w-72 hover:shadow-md transition-shadow">
+                      <CardContent className="p-4 space-y-3">
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1">
                             <p className="font-semibold text-sm truncate">{lead.name}</p>
-                            <Badge className="text-[10px] px-1.5 py-0.5">{lead.status}</Badge>
+                            <Badge className="text-[10px] px-2 py-0.5 flex-shrink-0">{lead.status}</Badge>
                           </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] text-muted-foreground">
-                            <div className="flex items-center gap-0.5 truncate">
+                          <div className="space-y-1.5 text-[11px] text-muted-foreground">
+                            <div className="flex items-center gap-2">
                               <Phone className="h-3 w-3 flex-shrink-0" />
                               <span className="truncate">{lead.phone}</span>
                             </div>
-                            <div className="flex items-center gap-0.5 truncate">
+                            <div className="flex items-center gap-2">
                               <MapPin className="h-3 w-3 flex-shrink-0" />
                               <span className="truncate">{lead.location}</span>
                             </div>
-                            <div className="truncate">{lead.project_type}</div>
-                            <div>{format(new Date(lead.created_at), 'MMM d')}</div>
+                            <div className="text-[10px]">Type: <span className="font-medium">{lead.project_type}</span></div>
+                            <div className="text-[10px]">Added: <span className="font-medium">{format(new Date(lead.created_at), 'MMM d, yyyy')}</span></div>
                           </div>
                         </div>
-                      </div>
-                    </div>
+                        {lead.message && (
+                          <div className="pt-2 border-t text-[10px] text-muted-foreground line-clamp-2">
+                            "{lead.message}"
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Recent Payments Section */}
-        <div>
-          <h2 className="text-lg font-heading font-bold mb-2">Recent Payments</h2>
-          <Card>
-            <CardContent className="p-0">
-              {payments.length === 0 ? (
-                <div className="p-4 text-center text-xs text-muted-foreground">No recent payments</div>
-              ) : (
-                <div className="divide-y">
+        <Card className="border-t-4 border-t-purple-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Recent Payments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {payments.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground">No recent payments</p>
+            ) : (
+              <div className="overflow-x-auto pb-2">
+                <div className="flex gap-3 min-w-min">
                   {payments.map((payment) => (
-                    <div key={payment.id} className="p-3 hover:bg-muted/50 transition-colors">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-1 mb-1">
-                            <p className="font-semibold text-sm">₹{parseFloat(payment.amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
-                            <Badge className="text-[10px] px-1.5 py-0.5">{payment.type}</Badge>
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0.5">{payment.status}</Badge>
-                          </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px] text-muted-foreground">
-                            <div>Pay: {format(new Date(payment.payment_date), 'MMM d')}</div>
-                            <div>
-                              {payment.next_payment_due_date ? `Due: ${format(new Date(payment.next_payment_due_date), 'MMM d')}` : 'No pending'}
-                            </div>
-                            {payment.notes && <div className="col-span-full truncate">{payment.notes}</div>}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Recent Projects Section */}
-        <div>
-          <h2 className="text-lg font-heading font-bold mb-2">Recent Projects</h2>
-          <Card>
-            <CardContent className="p-0">
-              {projects.length === 0 ? (
-                <div className="p-4 text-center text-xs text-muted-foreground">No recent projects</div>
-              ) : (
-                <div className="divide-y">
-                  {projects.map((project) => (
-                    <div key={project.id} className="p-3 hover:bg-muted/50 transition-colors">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-1 mb-1">
-                            <p className="font-semibold text-sm">{project.lead_id?.name}</p>
-                            <Badge className={
-                              project.status === "COMPLETED" ? "bg-green-100 text-green-800" :
-                              project.status === "ACTIVE" ? "bg-blue-100 text-blue-800" :
-                              project.status === "DELAYED" ? "bg-red-100 text-red-800" :
-                              project.status === "ON_HOLD" ? "bg-yellow-100 text-yellow-800" :
-                              "bg-gray-100 text-gray-800"
-                            }>
-                              {project.status}
+                    <Card key={payment.id} className="flex-shrink-0 w-72 hover:shadow-md transition-shadow">
+                      <CardContent className="p-4 space-y-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <p className="font-bold text-sm">₹{parseFloat(payment.amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+                            <Badge className="text-[10px] px-2 py-0.5">{payment.type}</Badge>
+                            <Badge 
+                              variant="outline" 
+                              className={`text-[10px] px-2 py-0.5 ${
+                                payment.status === 'COMPLETED' ? 'bg-green-50 text-green-700 border-green-200' :
+                                payment.status === 'PENDING' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                'bg-red-50 text-red-700 border-red-200'
+                              }`}
+                            >
+                              {payment.status}
                             </Badge>
                           </div>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px] text-muted-foreground">
-                            <div>Location: {project.lead_id?.location}</div>
-                            <div>₹{(project.final_amount || 0).toLocaleString('en-IN')}</div>
-                            <div>Due: {format(new Date(project.expected_completion_date), 'MMM d, yy')}</div>
-                            <div>{project.total_sqft} sqft</div>
-                            <div>₹{parseFloat(project.rate_per_sqft).toFixed(0)}/sqft</div>
+                          <div className="space-y-1.5 text-[10px] text-muted-foreground">
+                            <div>Payment: <span className="font-medium">{format(new Date(payment.payment_date), 'MMM d, yyyy')}</span></div>
+                            {payment.next_payment_due_date && (
+                              <div>Due: <span className="font-medium">{format(new Date(payment.next_payment_due_date), 'MMM d, yyyy')}</span></div>
+                            )}
+                            {payment.notes && (
+                              <div className="mt-2 pt-2 border-t line-clamp-2">"{payment.notes}"</div>
+                            )}
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Dialog open={showStatusDialog && selectedProject?.id === project.id} onOpenChange={setShowStatusDialog}>
-                            <DialogTrigger asChild>
-                              <Button
-                                onClick={() => setSelectedProject(project)}
-                                size="sm"
-                                variant="outline"
-                                className="gap-1 text-xs"
-                              >
-                                Status
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-md">
-                              <DialogHeader>
-                                <DialogTitle>Change Project Status</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <Select onValueChange={handleProjectStatusChange} disabled={statusChanging}>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder={selectedProject?.status || "Select status"} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="ACTIVE">Active</SelectItem>
-                                    <SelectItem value="DELAYED">Delayed</SelectItem>
-                                    <SelectItem value="COMPLETED">Completed</SelectItem>
-                                    <SelectItem value="ON_HOLD">On Hold</SelectItem>
-                                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                          <Dialog open={showMessageDialog && selectedProject?.id === project.id} onOpenChange={setShowMessageDialog}>
-                          <DialogTrigger asChild>
-                            <Button
-                              onClick={() => setSelectedProject(project)}
-                              size="sm"
-                              variant="outline"
-                              className="gap-1 text-xs"
-                            >
-                              <MessageCircle className="h-3 w-3" />
-                              Msg
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="sm:max-w-md">
-                            <DialogHeader>
-                              <DialogTitle>Send WhatsApp Message</DialogTitle>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div>
-                                <label className="text-sm font-medium mb-2 block">Message Type</label>
-                                <Select value={messageType} onValueChange={setMessageType}>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="prefilled">Prefilled (Status Based)</SelectItem>
-                                    <SelectItem value="custom">Custom Message</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              {messageType === "prefilled" ? (
-                                <div className="bg-muted p-3 rounded text-sm">
-                                  <p className="font-semibold mb-2">Preview:</p>
-                                  <p className="text-xs">
-                                    {selectedProject?.status === "ACTIVE"
-                                      ? "Thank you for choosing MIM Doors & Windows! Your project is now active and underway. Our team will keep you updated on the progress."
-                                      : selectedProject?.status === "DELAYED"
-                                      ? "We wanted to inform you that your project has encountered a delay. Our team is working diligently to minimize the impact and complete your project as soon as possible."
-                                      : selectedProject?.status === "COMPLETED"
-                                      ? "🎉 Great news! Your MIM Doors & Windows project has been completed successfully. Thank you for your business! We hope you enjoy your new installation."
-                                      : "Your project status has been updated. Please contact us for more details."}
-                                  </p>
-                                </div>
-                              ) : (
-                                <div>
-                                  <label className="text-sm font-medium mb-2 block">Message</label>
-                                  <Textarea
-                                    placeholder="Type your message here..."
-                                    value={customMessage}
-                                    onChange={(e) => setCustomMessage(e.target.value)}
-                                    rows={3}
-                                  />
-                                </div>
-                              )}
-
-                              <Button onClick={sendMessageToProject} disabled={submitting} className="w-full gap-2">
-                                <Send className="h-4 w-4" />
-                                {submitting ? "Sending..." : "Send Message"}
-                              </Button>
-                            </div>
-                          </DialogContent>
-                          </Dialog>
-                        </div>
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent Projects Section */}
+        <Card className="border-t-4 border-t-rose-500">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg">Recent Projects</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {projects.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground">No recent projects</p>
+            ) : (
+              <div className="overflow-x-auto pb-2">
+                <div className="flex gap-3 min-w-min">
+                  {projects.map((project) => (
+                    <Card 
+                      key={project.id} 
+                      className={`flex-shrink-0 w-72 hover:shadow-md transition-shadow border-l-4 ${
+                        project.status === "COMPLETED" ? "border-l-green-500" :
+                      project.status === "ACTIVE" ? "border-l-blue-500" :
+                      project.status === "DELAYED" ? "border-l-red-500" :
+                      project.status === "ON_HOLD" ? "border-l-yellow-500" :
+                      "border-l-gray-500"
+                    }`}
+                  >
+                    <CardContent className="p-4 space-y-3">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <p className="font-semibold text-sm truncate">{project.lead_id?.name}</p>
+                          <Badge className={`text-[10px] px-2 py-0.5 flex-shrink-0 ${
+                            project.status === "COMPLETED" ? "bg-green-100 text-green-800" :
+                            project.status === "ACTIVE" ? "bg-blue-100 text-blue-800" :
+                            project.status === "DELAYED" ? "bg-red-100 text-red-800" :
+                            project.status === "ON_HOLD" ? "bg-yellow-100 text-yellow-800" :
+                            "bg-gray-100 text-gray-800"
+                          }`}>
+                            {project.status}
+                          </Badge>
+                        </div>
+                        <div className="space-y-1.5 text-[10px] text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{project.lead_id?.location}</span>
+                          </div>
+                          <div>Sqft: <span className="font-medium">{project.total_sqft?.toLocaleString()}</span></div>
+                          <div>Amount: <span className="font-medium">₹{(project.final_amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span></div>
+                          <div>Due: <span className="font-medium">{format(new Date(project.expected_completion_date), 'MMM d, yyyy')}</span></div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );
