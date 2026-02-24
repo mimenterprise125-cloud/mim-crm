@@ -160,6 +160,7 @@ export default function Projects() {
       const { data, error } = await supabase
         .from("leads")
         .select("id, name, phone, location, status")
+        .eq("status", "CONVERTED")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -188,6 +189,11 @@ export default function Projects() {
     // Without GST
     const finalAmount = sqftNum * rateNum;
     return { rateWithGST: rateNum, finalAmount };
+  };
+
+  const getUnattendedLeads = () => {
+    const projectLeadIds = projects.map(p => p.lead_id?.id || p.lead_id);
+    return leads.filter(lead => !projectLeadIds.includes(lead.id));
   };
 
   const loadAuditHistory = async (projectId: string) => {
@@ -514,15 +520,165 @@ export default function Projects() {
         </div>
 
         {/* Projects List */}
-        <div className="grid gap-3">
-          {projects.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="flex items-center justify-center py-12">
-                <p className="text-muted-foreground">No projects found</p>
-              </CardContent>
-            </Card>
-          ) : (
-            projects.map((project) => (
+        <div className="space-y-8">
+          {/* Unattended Converted Leads */}
+          <div>
+            <div className="mb-4">
+              <h2 className="text-xl font-heading font-semibold mb-2">Unattended Converted Leads</h2>
+              <p className="text-sm text-muted-foreground">Converted leads waiting for project details to be filled</p>
+            </div>
+            <div className="grid gap-3">
+              {getUnattendedLeads().length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="flex items-center justify-center py-12">
+                    <p className="text-muted-foreground">All converted leads have projects assigned</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                getUnattendedLeads().map((lead) => (
+                  <Card key={lead.id} className="hover:shadow-md transition-shadow border-l-4 border-l-amber-500">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="font-semibold text-sm mb-1">{lead.name}</p>
+                          <p className="text-xs text-muted-foreground">{lead.phone} | {lead.location}</p>
+                        </div>
+                        <Dialog open={showAddDialog && formData.lead_id === lead.id} onOpenChange={setShowAddDialog}>
+                          <DialogTrigger asChild>
+                            <Button 
+                              size="sm"
+                              onClick={() => setFormData({ ...formData, lead_id: lead.id })}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Project
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                              <DialogTitle>Create New Project</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-4">
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">Client</label>
+                                <div className="p-3 rounded border border-input bg-muted">
+                                  <p className="font-semibold text-sm">{lead.name}</p>
+                                  <p className="text-xs text-muted-foreground">{lead.phone} | {lead.location}</p>
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">Total Sqft *</label>
+                                <Input
+                                  type="number"
+                                  placeholder="e.g., 5000"
+                                  value={formData.total_sqft}
+                                  onChange={(e) => setFormData({ ...formData, total_sqft: e.target.value })}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">Rate per Sqft (₹) *</label>
+                                <Input
+                                  type="number"
+                                  placeholder="e.g., 250"
+                                  value={formData.rate_per_sqft}
+                                  onChange={(e) => setFormData({ ...formData, rate_per_sqft: e.target.value })}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">GST</label>
+                                <Select value={formData.gst_enabled ? "yes" : "no"} onValueChange={(val) => setFormData({ ...formData, gst_enabled: val === "yes" })}>
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="yes">Yes (18% GST)</SelectItem>
+                                    <SelectItem value="no">No</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {formData.rate_per_sqft && (
+                                <div className="bg-muted p-3 rounded-lg space-y-2">
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Base Rate per Sqft</p>
+                                    <p className="font-semibold">₹{parseFloat(formData.rate_per_sqft).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</p>
+                                  </div>
+                                  {formData.gst_enabled && (
+                                    <div>
+                                      <p className="text-xs text-muted-foreground mb-1">Rate with 18% GST</p>
+                                      <p className="font-semibold">₹{(parseFloat(formData.rate_per_sqft) * 1.18).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">
+                                  Final Amount {formData.gst_enabled ? "(with 18% GST)" : "(without GST)"}
+                                </label>
+                                <Input
+                                  type="text"
+                                  placeholder="Calculated automatically"
+                                  value={
+                                    calculateWithGST(formData.total_sqft, formData.rate_per_sqft, formData.gst_enabled).finalAmount
+                                      ? "₹" + calculateWithGST(formData.total_sqft, formData.rate_per_sqft, formData.gst_enabled).finalAmount.toLocaleString("en-IN", { maximumFractionDigits: 0 })
+                                      : ""
+                                  }
+                                  readOnly
+                                  className="bg-muted"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">Profit Percentage (%)</label>
+                                <Input
+                                  type="number"
+                                  placeholder="e.g., 15"
+                                  value={formData.profit_percentage}
+                                  onChange={(e) => setFormData({ ...formData, profit_percentage: e.target.value })}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="text-sm font-medium mb-2 block">Expected Completion Date *</label>
+                                <Input
+                                  type="date"
+                                  value={formData.expected_completion_date}
+                                  onChange={(e) => setFormData({ ...formData, expected_completion_date: e.target.value })}
+                                />
+                              </div>
+
+                              <Button onClick={handleAddProject} disabled={submitting} className="w-full">
+                                {submitting ? "Creating..." : "Create Project"}
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Attended Projects */}
+          <div>
+            <div className="mb-4">
+              <h2 className="text-xl font-heading font-semibold mb-2">Attended Projects</h2>
+              <p className="text-sm text-muted-foreground">Projects with complete details and tracking</p>
+            </div>
+            <div className="grid gap-3">
+              {projects.length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="flex items-center justify-center py-12">
+                    <p className="text-muted-foreground">No projects found</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                projects.map((project) => (
               <Card key={project.id} className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3 items-center">
@@ -817,8 +973,10 @@ export default function Projects() {
                   </div>
                 </CardContent>
               </Card>
-            ))
-          )}
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </DashboardLayout>
