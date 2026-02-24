@@ -12,8 +12,20 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
 import { Phone, MapPin, RefreshCw, Calendar, MessageSquare, PhoneCall } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+
+const statusColors: Record<string, string> = {
+  NEW: "bg-blue-100 text-blue-800",
+  CONTACTED: "bg-yellow-100 text-yellow-800",
+  FOLLOW_UP: "bg-purple-100 text-purple-800",
+  SITE_VISIT: "bg-indigo-100 text-indigo-800",
+  QUOTATION_SENT: "bg-orange-100 text-orange-800",
+  NEGOTIATION: "bg-cyan-100 text-cyan-800",
+  CONVERTED: "bg-green-100 text-green-800",
+  COMPLETED: "bg-emerald-100 text-emerald-800",
+  LOST: "bg-red-100 text-red-800",
+};
 
 interface Lead {
   id: string;
@@ -29,6 +41,7 @@ interface Lead {
 
 export default function Contacts() {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -37,13 +50,20 @@ export default function Contacts() {
   const loadContacts = async () => {
     try {
       setRefreshing(true);
-      const { data, error } = await supabase
+      const { data: leadsData, error: leadsError } = await supabase
         .from("leads")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setLeads(data || []);
+      if (leadsError) throw leadsError;
+      
+      // Load projects to check for COMPLETED status
+      const { data: projectsData } = await supabase
+        .from("projects")
+        .select("*");
+
+      setLeads(leadsData || []);
+      setProjects(projectsData || []);
     } catch (error) {
       console.error("Error loading contacts:", error);
       toast({
@@ -55,6 +75,11 @@ export default function Contacts() {
       setRefreshing(false);
       setLoading(false);
     }
+  };
+
+  const isLeadCompleted = (leadId: string) => {
+    const leadProject = projects.find(p => p.lead_id === leadId);
+    return leadProject?.status === 'COMPLETED' || false;
   };
 
   const updateContactStatus = async (contactId: string, newStatus: string) => {
@@ -185,15 +210,17 @@ export default function Contacts() {
                 key={lead.id}
                 className="hover:shadow-lg transition-all duration-300 overflow-hidden"
               >
-                <div className={`h-1 ${getStatusColor(lead.status)}`} />
+                <div className={`h-1 ${lead.status === 'COMPLETED' ? 'bg-emerald-500' : lead.status === 'CONVERTED' ? 'bg-green-500' : lead.status === 'CONTACTED' ? 'bg-yellow-500' : lead.status === 'FOLLOW_UP' ? 'bg-purple-500' : lead.status === 'SITE_VISIT' ? 'bg-indigo-500' : lead.status === 'QUOTATION_SENT' ? 'bg-orange-500' : lead.status === 'NEGOTIATION' ? 'bg-cyan-500' : lead.status === 'LOST' ? 'bg-red-500' : 'bg-blue-500'}`} />
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <CardTitle className="text-xl">{lead.name}</CardTitle>
-                        <Badge variant="secondary" className={`${getStatusColor(lead.status)} text-white`}>
-                          {lead.status}
-                        </Badge>
+                        {lead.status !== 'COMPLETED' && (
+                          <Badge className={statusColors[lead.status]}>
+                            {lead.status}
+                          </Badge>
+                        )}
                       </div>
                       {lead.message && (
                         <p className="text-sm text-muted-foreground italic">
@@ -202,25 +229,31 @@ export default function Contacts() {
                       )}
                     </div>
                     <div className="w-48">
-                      <Select
-                        value={lead.status}
-                        onValueChange={(newStatus) => updateContactStatus(lead.id, newStatus)}
-                        disabled={updatingId === lead.id}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="NEW">New</SelectItem>
-                          <SelectItem value="CONTACTED">Contacted</SelectItem>
-                          <SelectItem value="FOLLOW_UP">Follow Up</SelectItem>
-                          <SelectItem value="SITE_VISIT">Site Visit</SelectItem>
-                          <SelectItem value="QUOTATION_SENT">Quotation Sent</SelectItem>
-                          <SelectItem value="NEGOTIATION">Negotiation</SelectItem>
-                          <SelectItem value="CONVERTED">Converted</SelectItem>
-                          <SelectItem value="LOST">Lost</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {lead.status === 'COMPLETED' || isLeadCompleted(lead.id) ? (
+                        <div className="p-2 bg-muted rounded text-sm text-muted-foreground">
+                          Project Completed
+                        </div>
+                      ) : (
+                        <Select
+                          value={lead.status}
+                          onValueChange={(newStatus) => updateContactStatus(lead.id, newStatus)}
+                          disabled={updatingId === lead.id}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="NEW">New</SelectItem>
+                            <SelectItem value="CONTACTED">Contacted</SelectItem>
+                            <SelectItem value="FOLLOW_UP">Follow Up</SelectItem>
+                            <SelectItem value="SITE_VISIT">Site Visit</SelectItem>
+                            <SelectItem value="QUOTATION_SENT">Quotation Sent</SelectItem>
+                            <SelectItem value="NEGOTIATION">Negotiation</SelectItem>
+                            <SelectItem value="CONVERTED">Converted</SelectItem>
+                            <SelectItem value="LOST">Lost</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                   </div>
                 </CardHeader>

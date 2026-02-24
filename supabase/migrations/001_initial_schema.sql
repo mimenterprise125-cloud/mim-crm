@@ -84,7 +84,7 @@ CREATE TABLE payments (
   status payment_status DEFAULT 'PENDING',
   next_payment_due_date DATE,
   notes TEXT,
-  created_by UUID NOT NULL REFERENCES users(id),
+  created_by UUID REFERENCES users(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

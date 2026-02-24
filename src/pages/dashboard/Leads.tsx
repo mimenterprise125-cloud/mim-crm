@@ -22,6 +22,7 @@ import {
 import { Search, Eye, MessageSquare } from "lucide-react";
 import { leadService } from "@/services/leadService";
 import { whatsappService } from "@/services/whatsappService";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
@@ -33,6 +34,7 @@ const statusColors: Record<string, string> = {
   QUOTATION_SENT: "bg-orange-100 text-orange-800",
   NEGOTIATION: "bg-cyan-100 text-cyan-800",
   CONVERTED: "bg-green-100 text-green-800",
+  COMPLETED: "bg-emerald-100 text-emerald-800",
   LOST: "bg-red-100 text-red-800",
 };
 
@@ -40,6 +42,7 @@ export default function Leads() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [leads, setLeads] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -60,6 +63,11 @@ export default function Leads() {
     loadLeads();
   }, [statusFilter]);
 
+  const isLeadCompleted = (leadId: string) => {
+    const leadProject = projects.find(p => p.lead_id === leadId);
+    return leadProject?.status === 'COMPLETED' || false;
+  };
+
   const loadLeads = async () => {
     try {
       setLoading(true);
@@ -71,6 +79,12 @@ export default function Leads() {
       if (result.success && result.data) {
         setLeads(result.data);
       }
+
+      // Load projects to check for COMPLETED status
+      const { data: projectsData } = await supabase
+        .from("projects")
+        .select("*");
+      setProjects(projectsData || []);
     } catch (error) {
       toast({
         title: "Error",
@@ -298,6 +312,7 @@ export default function Leads() {
                   <SelectItem value="QUOTATION_SENT">Quotation Sent</SelectItem>
                   <SelectItem value="NEGOTIATION">Negotiation</SelectItem>
                   <SelectItem value="CONVERTED">Converted</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
                   <SelectItem value="LOST">Lost</SelectItem>
                 </SelectContent>
               </Select>
@@ -337,14 +352,18 @@ export default function Leads() {
                       <td className="p-3 hidden md:table-cell">{lead.phone}</td>
                       <td className="p-3 hidden md:table-cell">{lead.location}</td>
                       <td className="p-3">
-                        <Badge
-                          className={
-                            statusColors[lead.status] ||
-                            "bg-gray-100 text-gray-800"
-                          }
-                        >
-                          {lead.status}
-                        </Badge>
+                        {lead.status === 'COMPLETED' || isLeadCompleted(lead.id) ? (
+                          <span className="text-xs text-muted-foreground">Project Completed</span>
+                        ) : (
+                          <Badge
+                            className={
+                              statusColors[lead.status] ||
+                              "bg-gray-100 text-gray-800"
+                            }
+                          >
+                            {lead.status}
+                          </Badge>
+                        )}
                       </td>
                       <td className="p-3 hidden lg:table-cell capitalize">
                         {lead.project_type}
@@ -402,41 +421,47 @@ export default function Leads() {
                                     <label className="text-sm font-medium mb-1.5 block">
                                       Status
                                     </label>
-                                    <Select
-                                      defaultValue={selectedLead.status}
-                                      onValueChange={(status) =>
-                                        handleStatusChange(
-                                          selectedLead.id,
-                                          status
-                                        )
-                                      }
-                                    >
-                                      <SelectTrigger>
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="NEW">New</SelectItem>
-                                        <SelectItem value="CONTACTED">
-                                          Contacted
-                                        </SelectItem>
-                                        <SelectItem value="FOLLOW_UP">
-                                          Follow Up
-                                        </SelectItem>
-                                        <SelectItem value="SITE_VISIT">
-                                          Site Visit
-                                        </SelectItem>
-                                        <SelectItem value="QUOTATION_SENT">
-                                          Quotation Sent
-                                        </SelectItem>
-                                        <SelectItem value="NEGOTIATION">
-                                          Negotiation
-                                        </SelectItem>
-                                        <SelectItem value="CONVERTED">
-                                          Converted
-                                        </SelectItem>
-                                        <SelectItem value="LOST">Lost</SelectItem>
-                                      </SelectContent>
-                                    </Select>
+                                    {selectedLead?.status === 'COMPLETED' || isLeadCompleted(selectedLead?.id) ? (
+                                      <div className="px-3 py-2 rounded border border-input bg-muted text-sm text-muted-foreground">
+                                        Project Completed
+                                      </div>
+                                    ) : (
+                                      <Select
+                                        defaultValue={selectedLead.status}
+                                        onValueChange={(status) =>
+                                          handleStatusChange(
+                                            selectedLead.id,
+                                            status
+                                          )
+                                        }
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="NEW">New</SelectItem>
+                                          <SelectItem value="CONTACTED">
+                                            Contacted
+                                          </SelectItem>
+                                          <SelectItem value="FOLLOW_UP">
+                                            Follow Up
+                                          </SelectItem>
+                                          <SelectItem value="SITE_VISIT">
+                                            Site Visit
+                                          </SelectItem>
+                                          <SelectItem value="QUOTATION_SENT">
+                                            Quotation Sent
+                                          </SelectItem>
+                                          <SelectItem value="NEGOTIATION">
+                                            Negotiation
+                                          </SelectItem>
+                                          <SelectItem value="CONVERTED">
+                                            Converted
+                                          </SelectItem>
+                                          <SelectItem value="LOST">Lost</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    )}
                                   </div>
 
                                   <div>

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, RefreshCw, Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
 

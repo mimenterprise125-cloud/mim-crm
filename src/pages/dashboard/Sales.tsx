@@ -20,7 +20,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { TrendingUp, Users, CheckCircle, XCircle, Search, RefreshCw, Eye, Plus } from "lucide-react";
 import { format } from "date-fns";
 
@@ -32,12 +32,14 @@ const statusColors: Record<string, string> = {
   QUOTATION_SENT: "bg-orange-100 text-orange-800",
   NEGOTIATION: "bg-cyan-100 text-cyan-800",
   CONVERTED: "bg-green-100 text-green-800",
+  COMPLETED: "bg-emerald-100 text-emerald-800",
   LOST: "bg-red-100 text-red-800",
 };
 
 export default function Sales() {
   const { toast } = useToast();
   const [leads, setLeads] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
@@ -59,16 +61,28 @@ export default function Sales() {
     setupRealtimeSubscription();
   }, []);
 
+  const isLeadCompleted = (leadId: string) => {
+    const leadProject = projects.find(p => p.lead_id === leadId);
+    return leadProject?.status === 'COMPLETED' || false;
+  };
+
   const loadLeads = async () => {
     try {
       setRefreshing(true);
-      const { data, error } = await supabase
+      const { data: leadsData, error: leadsError } = await supabase
         .from("leads")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setLeads(data || []);
+      if (leadsError) throw leadsError;
+
+      // Load projects to check for COMPLETED status
+      const { data: projectsData } = await supabase
+        .from("projects")
+        .select("*");
+
+      setLeads(leadsData || []);
+      setProjects(projectsData || []);
     } catch (error) {
       console.error("Error loading leads:", error);
       toast({
@@ -302,6 +316,7 @@ export default function Sales() {
               <SelectItem value="QUOTATION_SENT">Quotation Sent</SelectItem>
               <SelectItem value="NEGOTIATION">Negotiation</SelectItem>
               <SelectItem value="CONVERTED">Converted</SelectItem>
+              <SelectItem value="COMPLETED">Completed</SelectItem>
               <SelectItem value="LOST">Lost</SelectItem>
             </SelectContent>
           </Select>
@@ -422,24 +437,30 @@ export default function Sales() {
                     {/* Status */}
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Status</p>
-                      <Select
-                        value={lead.status}
-                        onValueChange={(newStatus) => updateLeadStatus(lead.id, newStatus)}
-                      >
-                        <SelectTrigger className="h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="NEW">New</SelectItem>
-                          <SelectItem value="CONTACTED">Contacted</SelectItem>
-                          <SelectItem value="FOLLOW_UP">Follow Up</SelectItem>
-                          <SelectItem value="SITE_VISIT">Site Visit</SelectItem>
-                          <SelectItem value="QUOTATION_SENT">Quotation Sent</SelectItem>
-                          <SelectItem value="NEGOTIATION">Negotiation</SelectItem>
-                          <SelectItem value="CONVERTED">Converted</SelectItem>
-                          <SelectItem value="LOST">Lost</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {lead.status === 'COMPLETED' || isLeadCompleted(lead.id) ? (
+                        <div className="h-8 px-3 py-1 rounded border border-input bg-muted text-sm text-muted-foreground flex items-center">
+                          Project Completed
+                        </div>
+                      ) : (
+                        <Select
+                          value={lead.status}
+                          onValueChange={(newStatus) => updateLeadStatus(lead.id, newStatus)}
+                        >
+                          <SelectTrigger className="h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="NEW">New</SelectItem>
+                            <SelectItem value="CONTACTED">Contacted</SelectItem>
+                            <SelectItem value="FOLLOW_UP">Follow Up</SelectItem>
+                            <SelectItem value="SITE_VISIT">Site Visit</SelectItem>
+                            <SelectItem value="QUOTATION_SENT">Quotation Sent</SelectItem>
+                            <SelectItem value="NEGOTIATION">Negotiation</SelectItem>
+                            <SelectItem value="CONVERTED">Converted</SelectItem>
+                            <SelectItem value="LOST">Lost</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
 
                     {/* Actions */}
@@ -478,9 +499,14 @@ export default function Sales() {
                               </div>
                               <div>
                                 <p className="text-xs text-muted-foreground mb-1">Status</p>
-                                <Badge className={statusColors[selectedLead.status]}>
-                                  {selectedLead.status}
-                                </Badge>
+                                {selectedLead.status !== 'COMPLETED' && (
+                                  <Badge className={statusColors[selectedLead.status]}>
+                                    {selectedLead.status}
+                                  </Badge>
+                                )}
+                                {selectedLead.status === 'COMPLETED' && (
+                                  <p className="text-sm text-muted-foreground">Project Completed</p>
+                                )}
                               </div>
                               <div>
                                 <p className="text-xs text-muted-foreground mb-1">Message</p>

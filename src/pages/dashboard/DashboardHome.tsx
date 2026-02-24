@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Users, TrendingUp, Briefcase, RefreshCw, DollarSign, AlertCircle, CheckCircle, Phone, MapPin, MessageCircle, Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import {
@@ -59,6 +59,8 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [showMessageDialog, setShowMessageDialog] = useState(false);
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const [statusChanging, setStatusChanging] = useState(false);
   const [messageType, setMessageType] = useState("custom");
   const [customMessage, setCustomMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -123,6 +125,56 @@ export default function Dashboard() {
       });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleProjectStatusChange = async (newStatus: string) => {
+    try {
+      if (!selectedProject) return;
+
+      setStatusChanging(true);
+
+      // Update project status
+      const { error: projectError } = await supabase
+        .from('projects')
+        .update({ status: newStatus })
+        .eq('id', selectedProject.id);
+
+      if (projectError) throw projectError;
+
+      // If project is marked COMPLETED, also update lead status to COMPLETED
+      if (newStatus === 'COMPLETED') {
+        const leadId = typeof selectedProject.lead_id === 'string'
+          ? selectedProject.lead_id
+          : selectedProject.lead_id?.id;
+
+        if (leadId) {
+          const { error: leadError } = await supabase
+            .from('leads')
+            .update({ status: 'COMPLETED' })
+            .eq('id', leadId);
+
+          if (leadError) console.error('Error updating lead status:', leadError);
+        }
+      }
+
+      toast({
+        title: "Success",
+        description: `Project status updated to ${newStatus}${newStatus === 'COMPLETED' ? ' and lead marked as Completed' : ''}`,
+        variant: "default"
+      });
+
+      setShowStatusDialog(false);
+      loadDashboardData();
+    } catch (error) {
+      console.error('Error updating project status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update project status",
+        variant: "destructive"
+      });
+    } finally {
+      setStatusChanging(false);
     }
   };
 
@@ -200,9 +252,23 @@ export default function Dashboard() {
 
       // Calculate stats
       const totalPayments = paymentsData?.length || 0;
-      const totalAmount = paymentsData?.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0) || 0;
-      const paidAmount = paymentsData?.filter((p: any) => p.status === 'PAID').reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0) || 0;
-      const pendingAmount = totalAmount - paidAmount;
+      
+      // Calculate total project amount (sum of all final_amounts from projects)
+      const totalAmount = projectsData?.reduce((sum: number, p: any) => sum + parseFloat(p.final_amount || 0), 0) || 0;
+      
+      // Calculate received amount (sum of all payment amounts collected so far)
+      const receivedAmount = paymentsData?.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0) || 0;
+      
+      // Calculate pending/remaining amount (total project amount - received amount)
+      const pendingAmount = totalAmount - receivedAmount;
+
+      // Log for debugging
+      console.log('Dashboard Stats:', {
+        totalAmount,
+        receivedAmount,
+        pendingAmount,
+        paymentsData: paymentsData?.map((p: any) => ({ amount: p.amount, status: p.status }))
+      });
 
       // Filter complete projects for stats
       const completeProjectsData = projectsData?.filter(project => {
@@ -222,7 +288,7 @@ export default function Dashboard() {
         completedProjects: completeProjectsData.filter((p: any) => p.status === 'COMPLETED').length,
         totalPayments: totalPayments,
         totalAmount: totalAmount,
-        paidAmount: paidAmount,
+        paidAmount: receivedAmount,
         pendingAmount: pendingAmount,
       };
 
@@ -399,7 +465,7 @@ export default function Dashboard() {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-[11px] text-muted-foreground mb-1">Total Amount</p>
-                  <p className="text-lg font-bold">₹{(stats.totalAmount / 100000).toFixed(1)}L</p>
+                  <p className="text-lg font-bold">₹{(stats.totalAmount || 0).toLocaleString('en-IN')}</p>
                 </div>
                 <DollarSign className="h-5 w-5 text-indigo-500/20" />
               </div>
@@ -410,8 +476,8 @@ export default function Dashboard() {
             <CardContent className="p-3">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[11px] text-muted-foreground mb-1">Paid</p>
-                  <p className="text-lg font-bold text-green-600">₹{(stats.paidAmount / 100000).toFixed(1)}L</p>
+                  <p className="text-[11px] text-muted-foreground mb-1">Received</p>
+                  <p className="text-lg font-bold text-green-600">₹{(stats.paidAmount || 0).toLocaleString('en-IN')}</p>
                 </div>
                 <CheckCircle className="h-5 w-5 text-green-500/20" />
               </div>
@@ -422,8 +488,8 @@ export default function Dashboard() {
             <CardContent className="p-3">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-[11px] text-muted-foreground mb-1">Pending</p>
-                  <p className="text-lg font-bold text-orange-600">₹{(stats.pendingAmount / 100000).toFixed(1)}L</p>
+                  <p className="text-[11px] text-muted-foreground mb-1">Remaining</p>
+                  <p className="text-lg font-bold text-orange-600">₹{(stats.pendingAmount || 0).toLocaleString('en-IN')}</p>
                 </div>
                 <AlertCircle className="h-5 w-5 text-orange-500/20" />
               </div>
@@ -532,13 +598,45 @@ export default function Dashboard() {
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px] text-muted-foreground">
                             <div>Location: {project.lead_id?.location}</div>
-                            <div>₹{(project.final_amount / 100000).toFixed(1)}L</div>
+                            <div>₹{(project.final_amount || 0).toLocaleString('en-IN')}</div>
                             <div>Due: {format(new Date(project.expected_completion_date), 'MMM d, yy')}</div>
                             <div>{project.total_sqft} sqft</div>
                             <div>₹{parseFloat(project.rate_per_sqft).toFixed(0)}/sqft</div>
                           </div>
                         </div>
-                        <Dialog open={showMessageDialog && selectedProject?.id === project.id} onOpenChange={setShowMessageDialog}>
+                        <div className="flex gap-2">
+                          <Dialog open={showStatusDialog && selectedProject?.id === project.id} onOpenChange={setShowStatusDialog}>
+                            <DialogTrigger asChild>
+                              <Button
+                                onClick={() => setSelectedProject(project)}
+                                size="sm"
+                                variant="outline"
+                                className="gap-1 text-xs"
+                              >
+                                Status
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-md">
+                              <DialogHeader>
+                                <DialogTitle>Change Project Status</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <Select onValueChange={handleProjectStatusChange} disabled={statusChanging}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder={selectedProject?.status || "Select status"} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="ACTIVE">Active</SelectItem>
+                                    <SelectItem value="DELAYED">Delayed</SelectItem>
+                                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                                    <SelectItem value="ON_HOLD">On Hold</SelectItem>
+                                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          <Dialog open={showMessageDialog && selectedProject?.id === project.id} onOpenChange={setShowMessageDialog}>
                           <DialogTrigger asChild>
                             <Button
                               onClick={() => setSelectedProject(project)}
@@ -599,7 +697,8 @@ export default function Dashboard() {
                               </Button>
                             </div>
                           </DialogContent>
-                        </Dialog>
+                          </Dialog>
+                        </div>
                       </div>
                     </div>
                   ))}
