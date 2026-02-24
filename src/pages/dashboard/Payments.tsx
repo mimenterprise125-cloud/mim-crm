@@ -84,13 +84,11 @@ export default function Payments() {
     try {
       const { data: { user }, error } = await supabase.auth.getUser();
       if (error || !user) {
-        console.log('No authenticated user');
         setCurrentUserId(null);
       } else {
         setCurrentUserId(user.id);
       }
     } catch (error) {
-      console.error('Error getting user:', error);
       setCurrentUserId(null);
     }
   };
@@ -104,7 +102,6 @@ export default function Payments() {
         setConvertedLeads([]);
       }
     } catch (error) {
-      console.error('Error loading converted leads:', error);
       setConvertedLeads([]);
     }
   };
@@ -149,7 +146,6 @@ export default function Payments() {
       
       setPayments(enrichedPayments);
     } catch (error) {
-      console.error('Error loading payments:', error);
       setPayments([]);
     }
   };
@@ -250,7 +246,6 @@ export default function Payments() {
         variant: "default"
       });
     } catch (error) {
-      console.error('Error adding payment:', error);
       toast({
         title: "Error",
         description: "Failed to add payment. Please try again.",
@@ -321,7 +316,6 @@ export default function Payments() {
         });
       }
     } catch (error) {
-      console.error('Error adding payment:', error);
       toast({
         title: "Error",
         description: "Failed to add payment",
@@ -388,7 +382,6 @@ export default function Payments() {
         variant: "default"
       });
     } catch (error) {
-      console.error('Error adding partial payment:', error);
       toast({
         title: "Error",
         description: "Failed to add payment",

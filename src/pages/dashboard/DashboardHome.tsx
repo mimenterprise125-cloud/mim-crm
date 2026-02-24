@@ -117,7 +117,6 @@ export default function Dashboard() {
         throw new Error("Failed to send message");
       }
     } catch (error) {
-      console.error("Error sending message:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to send message",
@@ -149,12 +148,10 @@ export default function Dashboard() {
           : selectedProject.lead_id?.id;
 
         if (leadId) {
-          const { error: leadError } = await supabase
+          await supabase
             .from('leads')
             .update({ status: 'COMPLETED' })
             .eq('id', leadId);
-
-          if (leadError) console.error('Error updating lead status:', leadError);
         }
       }
 
@@ -167,7 +164,6 @@ export default function Dashboard() {
       setShowStatusDialog(false);
       loadDashboardData();
     } catch (error) {
-      console.error('Error updating project status:', error);
       toast({
         title: "Error",
         description: "Failed to update project status",
@@ -179,75 +175,98 @@ export default function Dashboard() {
   };
 
   const setupRealtimeSubscriptions = () => {
-    const leadsSubscription = supabase
-      .channel('leads')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
-        loadDashboardData();
-      })
-      .subscribe();
+    try {
+      const leadsSubscription = supabase
+        .channel('leads')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
+          loadDashboardData();
+        })
+        .subscribe(() => {});
 
-    const paymentsSubscription = supabase
-      .channel('payments')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => {
-        loadDashboardData();
-      })
-      .subscribe();
+      const paymentsSubscription = supabase
+        .channel('payments')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => {
+          loadDashboardData();
+        })
+        .subscribe(() => {});
 
-    return () => {
-      leadsSubscription.unsubscribe();
-      paymentsSubscription.unsubscribe();
-    };
+      return () => {
+        leadsSubscription.unsubscribe();
+        paymentsSubscription.unsubscribe();
+      };
+    } catch (error) {
+      return () => {};
+    }
   };
 
   const loadDashboardData = async () => {
     try {
-      // Load leads
-      const { data: leadsData, error: leadsError } = await supabase
-        .from('leads')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(5);
-
-      if (!leadsError && leadsData) {
-        setLeads(leadsData);
+      setLoading(true);
+      
+      // Load leads with error handling
+      let leadsData = [];
+      try {
+        const { data, error } = await supabase
+          .from('leads')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(5);
+        if (!error && data) {
+          leadsData = data;
+          setLeads(data);
+        }
+      } catch (err) {
+        // Error loading leads
       }
 
-      // Load projects with lead info
-      const { data: projectsData, error: projectsError } = await supabase
-        .from('projects')
-        .select(`
-          *,
-          lead_id (
-            id,
-            name,
-            phone,
-            location
-          )
-        `)
-        .order('created_at', { ascending: false })
-        .limit(5);
+      // Load projects with error handling
+      let projectsData = [];
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select(`
+            *,
+            lead_id (
+              id,
+              name,
+              phone,
+              location
+            )
+          `)
+          .order('created_at', { ascending: false })
+          .limit(5);
 
-      if (!projectsError && projectsData) {
-        // Filter to only show complete projects (with all required fields filled)
-        const completeProjects = projectsData.filter(project => {
-          return project.total_sqft && 
-                 project.rate_per_sqft && 
-                 project.expected_completion_date &&
-                 project.total_sqft > 0 &&
-                 project.rate_per_sqft > 0;
-        });
-        setProjects(completeProjects);
+        if (!error && data) {
+          projectsData = data;
+          // Filter to only show complete projects (with all required fields filled)
+          const completeProjects = projectsData.filter(project => {
+            return project.total_sqft && 
+                   project.rate_per_sqft && 
+                   project.expected_completion_date &&
+                   project.total_sqft > 0 &&
+                   project.rate_per_sqft > 0;
+          });
+          setProjects(completeProjects);
+        }
+      } catch (err) {
+        // Error loading projects
       }
 
-      // Load payments
-      const { data: paymentsData, error: paymentsError } = await supabase
-        .from('payments')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(5);
+      // Load payments with error handling
+      let paymentsData = [];
+      try {
+        const { data, error } = await supabase
+          .from('payments')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(5);
 
-      if (!paymentsError && paymentsData) {
-        setPayments(paymentsData);
+        if (!error && data) {
+          paymentsData = data;
+          setPayments(data);
+        }
+      } catch (err) {
+        // Error loading payments
       }
 
       // Calculate stats
@@ -261,14 +280,6 @@ export default function Dashboard() {
       
       // Calculate pending/remaining amount (total project amount - received amount)
       const pendingAmount = totalAmount - receivedAmount;
-
-      // Log for debugging
-      console.log('Dashboard Stats:', {
-        totalAmount,
-        receivedAmount,
-        pendingAmount,
-        paymentsData: paymentsData?.map((p: any) => ({ amount: p.amount, status: p.status }))
-      });
 
       // Filter complete projects for stats
       const completeProjectsData = projectsData?.filter(project => {
@@ -294,7 +305,19 @@ export default function Dashboard() {
 
       setStats(newStats);
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      // Set default stats instead of crashing
+      setStats({
+        totalLeads: 0,
+        newLeads: 0,
+        convertedLeads: 0,
+        totalProjects: 0,
+        activeProjects: 0,
+        completedProjects: 0,
+        totalPayments: 0,
+        totalAmount: 0,
+        paidAmount: 0,
+        pendingAmount: 0,
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -341,209 +364,273 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid - Row 1: Leads */}
-        <Card className="border-t-4 border-t-blue-500">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Lead Statistics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
-              <div className="p-3 rounded-lg bg-blue-50 border border-blue-100">
-                <p className="text-[11px] text-muted-foreground mb-1">Total Leads</p>
-                <p className="text-xl font-bold">{stats.totalLeads}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2">
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-1">Total Leads</p>
+                  <p className="text-xl font-bold">{stats.totalLeads}</p>
+                </div>
+                <Users className="h-5 w-5 text-blue-500/20" />
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="p-3 rounded-lg bg-orange-50 border border-orange-100">
-                <p className="text-[11px] text-muted-foreground mb-1">New Leads</p>
-                <p className="text-xl font-bold text-orange-600">{stats.newLeads}</p>
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-1">New Leads</p>
+                  <p className="text-xl font-bold text-orange-600">{stats.newLeads}</p>
+                </div>
+                <AlertCircle className="h-5 w-5 text-orange-500/20" />
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="p-3 rounded-lg bg-green-50 border border-green-100">
-                <p className="text-[11px] text-muted-foreground mb-1">Converted</p>
-                <p className="text-xl font-bold text-green-600">{stats.convertedLeads}</p>
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-1">Converted</p>
+                  <p className="text-xl font-bold text-green-600">{stats.convertedLeads}</p>
+                </div>
+                <CheckCircle className="h-5 w-5 text-green-500/20" />
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="p-3 rounded-lg bg-purple-50 border border-purple-100">
-                <p className="text-[11px] text-muted-foreground mb-1">Conv. Rate</p>
-                <p className="text-xl font-bold text-purple-600">
-                  {stats.totalLeads > 0 ? ((stats.convertedLeads / stats.totalLeads) * 100).toFixed(1) : 0}%
-                </p>
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-1">Conv. Rate</p>
+                  <p className="text-xl font-bold text-purple-600">
+                    {stats.totalLeads > 0 ? ((stats.convertedLeads / stats.totalLeads) * 100).toFixed(1) : 0}%
+                  </p>
+                </div>
+                <TrendingUp className="h-5 w-5 text-purple-500/20" />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Stats Grid - Row 2: Projects */}
-        <Card className="border-t-4 border-t-indigo-500">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Project Statistics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
-              <div className="p-3 rounded-lg bg-indigo-50 border border-indigo-100">
-                <p className="text-[11px] text-muted-foreground mb-1">Total Projects</p>
-                <p className="text-xl font-bold">{stats.totalProjects}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2">
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-1">Total Projects</p>
+                  <p className="text-xl font-bold">{stats.totalProjects}</p>
+                </div>
+                <Briefcase className="h-5 w-5 text-indigo-500/20" />
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="p-3 rounded-lg bg-blue-50 border border-blue-100">
-                <p className="text-[11px] text-muted-foreground mb-1">Active</p>
-                <p className="text-xl font-bold text-blue-600">{stats.activeProjects}</p>
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-1">Active</p>
+                  <p className="text-xl font-bold text-blue-600">{stats.activeProjects}</p>
+                </div>
+                <TrendingUp className="h-5 w-5 text-blue-500/20" />
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="p-3 rounded-lg bg-green-50 border border-green-100">
-                <p className="text-[11px] text-muted-foreground mb-1">Completed</p>
-                <p className="text-xl font-bold text-green-600">{stats.completedProjects}</p>
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-1">Completed</p>
+                  <p className="text-xl font-bold text-green-600">{stats.completedProjects}</p>
+                </div>
+                <CheckCircle className="h-5 w-5 text-green-500/20" />
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="p-3 rounded-lg bg-cyan-50 border border-cyan-100">
-                <p className="text-[11px] text-muted-foreground mb-1">On Track %</p>
-                <p className="text-xl font-bold text-cyan-600">
-                  {stats.totalProjects > 0 ? ((stats.completedProjects / stats.totalProjects) * 100).toFixed(0) : 0}%
-                </p>
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-1">On Track %</p>
+                  <p className="text-xl font-bold text-blue-600">
+                    {stats.totalProjects > 0 ? ((stats.completedProjects / stats.totalProjects) * 100).toFixed(0) : 0}%
+                  </p>
+                </div>
+                <CheckCircle className="h-5 w-5 text-blue-500/20" />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Stats Grid - Row 3: Payments */}
-        <Card className="border-t-4 border-t-green-500">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Payment Statistics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-3">
-              <div className="p-3 rounded-lg bg-green-50 border border-green-100">
-                <p className="text-[11px] text-muted-foreground mb-1">Total Payments</p>
-                <p className="text-xl font-bold">{stats.totalPayments}</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-2">
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-1">Total Payments</p>
+                  <p className="text-xl font-bold">{stats.totalPayments}</p>
+                </div>
+                <DollarSign className="h-5 w-5 text-green-500/20" />
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="p-3 rounded-lg bg-indigo-50 border border-indigo-100">
-                <p className="text-[11px] text-muted-foreground mb-1">Total Amount</p>
-                <p className="text-lg font-bold">₹{(stats.totalAmount || 0).toLocaleString('en-IN')}</p>
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-1">Total Amount</p>
+                  <p className="text-lg font-bold">₹{(stats.totalAmount || 0).toLocaleString('en-IN')}</p>
+                </div>
+                <DollarSign className="h-5 w-5 text-indigo-500/20" />
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-100">
-                <p className="text-[11px] text-muted-foreground mb-1">Received</p>
-                <p className="text-lg font-bold text-emerald-600">₹{(stats.paidAmount || 0).toLocaleString('en-IN')}</p>
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-1">Received</p>
+                  <p className="text-lg font-bold text-green-600">₹{(stats.paidAmount || 0).toLocaleString('en-IN')}</p>
+                </div>
+                <CheckCircle className="h-5 w-5 text-green-500/20" />
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="p-3 rounded-lg bg-amber-50 border border-amber-100">
-                <p className="text-[11px] text-muted-foreground mb-1">Remaining</p>
-                <p className="text-lg font-bold text-amber-600">₹{(stats.pendingAmount || 0).toLocaleString('en-IN')}</p>
+          <Card>
+            <CardContent className="p-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-1">Remaining</p>
+                  <p className="text-lg font-bold text-orange-600">₹{(stats.pendingAmount || 0).toLocaleString('en-IN')}</p>
+                </div>
+                <AlertCircle className="h-5 w-5 text-orange-500/20" />
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Recent Leads Section */}
-        <Card className="border-t-4 border-t-cyan-500">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Recent Leads</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {leads.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground">No recent leads</p>
-            ) : (
-              <div className="overflow-x-auto pb-2">
-                <div className="flex gap-3 min-w-min">
-                  {leads.map((lead) => (
-                    <Card key={lead.id} className="flex-shrink-0 w-72 hover:shadow-md transition-shadow">
-                      <CardContent className="p-4 space-y-3">
-                        <div>
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <p className="font-semibold text-sm truncate">{lead.name}</p>
-                            <Badge className="text-[10px] px-2 py-0.5 flex-shrink-0">{lead.status}</Badge>
-                          </div>
-                          <div className="space-y-1.5 text-[11px] text-muted-foreground">
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-3 w-3 flex-shrink-0" />
-                              <span className="truncate">{lead.phone}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <MapPin className="h-3 w-3 flex-shrink-0" />
-                              <span className="truncate">{lead.location}</span>
-                            </div>
-                            <div className="text-[10px]">Type: <span className="font-medium">{lead.project_type}</span></div>
-                            <div className="text-[10px]">Added: <span className="font-medium">{format(new Date(lead.created_at), 'MMM d, yyyy')}</span></div>
-                          </div>
+        <div>
+          <h2 className="text-lg font-heading font-bold mb-3">Recent Leads</h2>
+          {leads.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                No recent leads
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="overflow-x-auto pb-2">
+              <div className="flex gap-3 min-w-min">
+                {leads.map((lead) => (
+                  <Card key={lead.id} className="flex-shrink-0 w-72 hover:shadow-md transition-shadow">
+                    <CardContent className="p-4 space-y-3">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p className="font-semibold text-sm truncate">{lead.name}</p>
+                          <Badge className="text-[10px] px-2 py-0.5 flex-shrink-0">{lead.status}</Badge>
                         </div>
-                        {lead.message && (
-                          <div className="pt-2 border-t text-[10px] text-muted-foreground line-clamp-2">
-                            "{lead.message}"
+                        <div className="space-y-1.5 text-[11px] text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{lead.phone}</span>
                           </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{lead.location}</span>
+                          </div>
+                          <div className="text-[10px]">Type: <span className="font-medium">{lead.project_type}</span></div>
+                          <div className="text-[10px]">Added: <span className="font-medium">{format(new Date(lead.created_at), 'MMM d, yyyy')}</span></div>
+                        </div>
+                      </div>
+                      {lead.message && (
+                        <div className="pt-2 border-t text-[10px] text-muted-foreground line-clamp-2">
+                          "{lead.message}"
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          )}
+        </div>
 
         {/* Recent Payments Section */}
-        <Card className="border-t-4 border-t-purple-500">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Recent Payments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {payments.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground">No recent payments</p>
-            ) : (
-              <div className="overflow-x-auto pb-2">
-                <div className="flex gap-3 min-w-min">
-                  {payments.map((payment) => (
-                    <Card key={payment.id} className="flex-shrink-0 w-72 hover:shadow-md transition-shadow">
-                      <CardContent className="p-4 space-y-3">
-                        <div>
-                          <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <p className="font-bold text-sm">₹{parseFloat(payment.amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
-                            <Badge className="text-[10px] px-2 py-0.5">{payment.type}</Badge>
-                            <Badge 
-                              variant="outline" 
-                              className={`text-[10px] px-2 py-0.5 ${
-                                payment.status === 'COMPLETED' ? 'bg-green-50 text-green-700 border-green-200' :
-                                payment.status === 'PENDING' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                'bg-red-50 text-red-700 border-red-200'
-                              }`}
-                            >
-                              {payment.status}
-                            </Badge>
-                          </div>
-                          <div className="space-y-1.5 text-[10px] text-muted-foreground">
-                            <div>Payment: <span className="font-medium">{format(new Date(payment.payment_date), 'MMM d, yyyy')}</span></div>
-                            {payment.next_payment_due_date && (
-                              <div>Due: <span className="font-medium">{format(new Date(payment.next_payment_due_date), 'MMM d, yyyy')}</span></div>
-                            )}
-                            {payment.notes && (
-                              <div className="mt-2 pt-2 border-t line-clamp-2">"{payment.notes}"</div>
-                            )}
-                          </div>
+        <div>
+          <h2 className="text-lg font-heading font-bold mb-3">Recent Payments</h2>
+          {payments.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                No recent payments
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="overflow-x-auto pb-2">
+              <div className="flex gap-3 min-w-min">
+                {payments.map((payment) => (
+                  <Card key={payment.id} className="flex-shrink-0 w-72 hover:shadow-md transition-shadow">
+                    <CardContent className="p-4 space-y-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <p className="font-bold text-sm">₹{parseFloat(payment.amount).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</p>
+                          <Badge className="text-[10px] px-2 py-0.5">{payment.type}</Badge>
+                          <Badge 
+                            variant="outline" 
+                            className={`text-[10px] px-2 py-0.5 ${
+                              payment.status === 'COMPLETED' ? 'bg-green-50 text-green-700 border-green-200' :
+                              payment.status === 'PENDING' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                              'bg-red-50 text-red-700 border-red-200'
+                            }`}
+                          >
+                            {payment.status}
+                          </Badge>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                        <div className="space-y-1.5 text-[10px] text-muted-foreground">
+                          <div>Payment: <span className="font-medium">{format(new Date(payment.payment_date), 'MMM d, yyyy')}</span></div>
+                          {payment.next_payment_due_date && (
+                            <div>Due: <span className="font-medium">{format(new Date(payment.next_payment_due_date), 'MMM d, yyyy')}</span></div>
+                          )}
+                          {payment.notes && (
+                            <div className="mt-2 pt-2 border-t line-clamp-2">"{payment.notes}"</div>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </div>
+          )}
+        </div>
 
         {/* Recent Projects Section */}
-        <Card className="border-t-4 border-t-rose-500">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Recent Projects</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {projects.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground">No recent projects</p>
-            ) : (
-              <div className="overflow-x-auto pb-2">
-                <div className="flex gap-3 min-w-min">
-                  {projects.map((project) => (
-                    <Card 
-                      key={project.id} 
-                      className={`flex-shrink-0 w-72 hover:shadow-md transition-shadow border-l-4 ${
-                        project.status === "COMPLETED" ? "border-l-green-500" :
+        <div>
+          <h2 className="text-lg font-heading font-bold mb-3">Recent Projects</h2>
+          {projects.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                No recent projects
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="overflow-x-auto pb-2">
+              <div className="flex gap-3 min-w-min">
+                {projects.map((project) => (
+                  <Card 
+                    key={project.id} 
+                    className={`flex-shrink-0 w-72 hover:shadow-md transition-shadow border-l-4 ${
+                      project.status === "COMPLETED" ? "border-l-green-500" :
                       project.status === "ACTIVE" ? "border-l-blue-500" :
                       project.status === "DELAYED" ? "border-l-red-500" :
                       project.status === "ON_HOLD" ? "border-l-yellow-500" :
@@ -579,9 +666,8 @@ export default function Dashboard() {
                 ))}
               </div>
             </div>
-            )}
-          </CardContent>
-        </Card>
+          )}
+        </div>
       </div>
     </DashboardLayout>
   );

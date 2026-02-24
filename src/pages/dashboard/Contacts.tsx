@@ -50,22 +50,35 @@ export default function Contacts() {
   const loadContacts = async () => {
     try {
       setRefreshing(true);
-      const { data: leadsData, error: leadsError } = await supabase
-        .from("leads")
-        .select("*")
-        .order("created_at", { ascending: false });
+      
+      let leadsData = [];
+      try {
+        const { data, error } = await supabase
+          .from("leads")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-      if (leadsError) throw leadsError;
+        if (!error && data) {
+          leadsData = data;
+          setLeads(data);
+        }
+      } catch (err) {
+        // Error loading leads
+      }
       
       // Load projects to check for COMPLETED status
-      const { data: projectsData } = await supabase
-        .from("projects")
-        .select("*");
+      try {
+        const { data: projectsData } = await supabase
+          .from("projects")
+          .select("*");
 
-      setLeads(leadsData || []);
-      setProjects(projectsData || []);
+        if (projectsData) {
+          setProjects(projectsData);
+        }
+      } catch (err) {
+        setProjects([]);
+      }
     } catch (error) {
-      console.error("Error loading contacts:", error);
       toast({
         title: "Error",
         description: "Failed to load contacts",
@@ -103,7 +116,6 @@ export default function Contacts() {
         description: `Contact status updated to ${newStatus}`,
       });
     } catch (error) {
-      console.error("Error updating status:", error);
       toast({
         title: "Error",
         description: "Failed to update status",

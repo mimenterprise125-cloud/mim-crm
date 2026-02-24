@@ -85,7 +85,6 @@ export default function Operations() {
       
       setProjects(completeProjects);
     } catch (error) {
-      console.error("Error loading projects:", error);
       toast({
         title: "Error",
         description: "Failed to load projects",
@@ -106,7 +105,7 @@ export default function Operations() {
       if (error) throw error;
       setProjectUpdates(data || []);
     } catch (error) {
-      console.error("Error loading project updates:", error);
+      // Error loading project updates
     }
   };
 
@@ -155,7 +154,6 @@ export default function Operations() {
       setNewStatus("");
       await loadProjects();
     } catch (error) {
-      console.error("Error updating status:", error);
       toast({
         title: "Error",
         description: "Failed to update project status",
@@ -212,7 +210,6 @@ export default function Operations() {
         throw new Error("Failed to send message");
       }
     } catch (error) {
-      console.error("Error sending message:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to send message",

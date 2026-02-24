@@ -104,7 +104,6 @@ export default function CompletedProjects() {
       if (error) throw error;
       setProjects(data || []);
     } catch (error) {
-      console.error("Error loading completed projects:", error);
       toast({
         title: "Error",
         description: "Failed to load completed projects",
@@ -195,7 +194,6 @@ export default function CompletedProjects() {
       // Reload projects
       await loadProjects();
     } catch (error) {
-      console.error("Error submitting project:", error);
       toast({
         title: "Error",
         description: "Failed to add project. Please try again.",
@@ -224,7 +222,6 @@ export default function CompletedProjects() {
 
       await loadProjects();
     } catch (error) {
-      console.error("Error deleting project:", error);
       toast({
         title: "Error",
         description: "Failed to delete project",

@@ -80,7 +80,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           completed_projects: completedData?.length || 0,
         });
       } catch (error) {
-        console.error("Error loading counts:", error);
+        // Error loading counts
       }
     };
 

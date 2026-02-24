@@ -41,7 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }
       } catch (error) {
-        console.error("Error loading session:", error);
         localStorage.removeItem("user_session");
         setUser(null);
       } finally {
@@ -72,7 +71,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       return false;
     } catch (error) {
-      console.error("Login error:", error);
       return false;
     } finally {
       setIsLoading(false);

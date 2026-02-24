@@ -60,7 +60,6 @@ const Index = () => {
       if (error) throw error;
       setCompletedProjects(data || []);
     } catch (error) {
-      console.error("Error loading completed projects:", error);
       // Only show empty state, no mock data
       setCompletedProjects([]);
     } finally {

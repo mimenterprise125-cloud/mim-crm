@@ -71,7 +71,6 @@ export default function Accounts() {
         setPayments(allPayments);
       }
     } catch (error) {
-      console.error("Error loading leads:", error);
       toast({
         title: "Error",
         description: "Failed to load accounts",

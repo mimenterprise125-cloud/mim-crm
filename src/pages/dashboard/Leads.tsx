@@ -130,20 +130,29 @@ export default function Leads() {
   const loadLeads = async () => {
     try {
       setLoading(true);
-      const filters: any = { limit: 100 };
-      if (statusFilter !== "ALL") {
-        filters.status = statusFilter;
-      }
-      const result = await leadService.getLeads(filters);
-      if (result.success && result.data) {
-        setLeads(result.data);
+      
+      try {
+        const filters: any = { limit: 100 };
+        if (statusFilter !== "ALL") {
+          filters.status = statusFilter;
+        }
+        const result = await leadService.getLeads(filters);
+        if (result.success && result.data) {
+          setLeads(result.data);
+        }
+      } catch (err) {
+        setLeads([]);
       }
 
       // Load projects to check for COMPLETED status
-      const { data: projectsData } = await supabase
-        .from("projects")
-        .select("*");
-      setProjects(projectsData || []);
+      try {
+        const { data: projectsData } = await supabase
+          .from("projects")
+          .select("*");
+        setProjects(projectsData || []);
+      } catch (err) {
+        setProjects([]);
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -193,7 +202,6 @@ export default function Leads() {
         loadLeads();
       }
     } catch (error) {
-      console.error(error);
       toast({
         title: "Error",
         description: "Failed to update status",
@@ -281,7 +289,6 @@ export default function Leads() {
         loadLeads();
       }
     } catch (error) {
-      console.error("Error creating project:", error);
       toast({
         title: "Error",
         description: "Failed to create project",

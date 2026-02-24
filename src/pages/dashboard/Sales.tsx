@@ -84,7 +84,6 @@ export default function Sales() {
       setLeads(leadsData || []);
       setProjects(projectsData || []);
     } catch (error) {
-      console.error("Error loading leads:", error);
       toast({
         title: "Error",
         description: "Failed to load leads",
@@ -175,7 +174,6 @@ export default function Sales() {
         setSelectedLead({ ...selectedLead, status: newStatus });
       }
     } catch (error) {
-      console.error("Error updating lead:", error);
       toast({
         title: "Error",
         description: "Failed to update lead",
@@ -226,7 +224,6 @@ export default function Sales() {
       setShowAddDialog(false);
       await loadLeads();
     } catch (error) {
-      console.error("Error adding lead:", error);
       toast({
         title: "Error",
         description: "Failed to create lead",

@@ -116,24 +116,31 @@ export default function Projects() {
 
   const loadProjects = async () => {
     try {
-      const { data, error } = await supabase
-        .from("projects")
-        .select(`
-          *,
-          lead_id (
-            id,
-            name,
-            phone,
-            location,
-            project_type
-          )
-        `)
-        .order("created_at", { ascending: false });
+      let projectsData = [];
+      try {
+        const { data, error } = await supabase
+          .from("projects")
+          .select(`
+            *,
+            lead_id (
+              id,
+              name,
+              phone,
+              location,
+              project_type
+            )
+          `)
+          .order("created_at", { ascending: false });
 
-      if (error) throw error;
+        if (!error && data) {
+          projectsData = data;
+        }
+      } catch (err) {
+        // Error loading projects from database
+      }
       
       // Filter to only show complete projects (with all required fields filled)
-      const completeProjects = (data || []).filter(project => {
+      const completeProjects = (projectsData || []).filter(project => {
         return project.total_sqft && 
                project.rate_per_sqft && 
                project.expected_completion_date &&
@@ -143,7 +150,7 @@ export default function Projects() {
       
       setProjects(completeProjects);
     } catch (error) {
-      console.error("Error loading projects:", error);
+      setProjects([]);
       toast({
         title: "Error",
         description: "Failed to load projects",
@@ -157,16 +164,21 @@ export default function Projects() {
 
   const loadLeads = async () => {
     try {
-      const { data, error } = await supabase
-        .from("leads")
-        .select("id, name, phone, location, status")
-        .eq("status", "CONVERTED")
-        .order("created_at", { ascending: false });
+      try {
+        const { data, error } = await supabase
+          .from("leads")
+          .select("id, name, phone, location, status")
+          .eq("status", "CONVERTED")
+          .order("created_at", { ascending: false });
 
-      if (error) throw error;
-      setLeads(data || []);
+        if (!error && data) {
+          setLeads(data);
+        }
+      } catch (err) {
+        setLeads([]);
+      }
     } catch (error) {
-      console.error("Error loading leads:", error);
+      // Error loading leads
     }
   };
 
@@ -215,7 +227,7 @@ export default function Projects() {
       if (error) throw error;
       setAuditHistory(data || []);
     } catch (error) {
-      console.error("Error loading audit history:", error);
+      // Error loading audit history
     }
   };
 
@@ -300,7 +312,6 @@ export default function Projects() {
       setShowEditDialog(false);
       await loadProjects();
     } catch (error) {
-      console.error("Error updating project:", error);
       toast({
         title: "Error",
         description: "Failed to update project",
@@ -362,7 +373,6 @@ export default function Projects() {
       setShowAddDialog(false);
       await loadProjects();
     } catch (error) {
-      console.error("Error adding project:", error);
       toast({
         title: "Error",
         description: "Failed to create project",
