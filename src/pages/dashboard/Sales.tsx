@@ -97,14 +97,62 @@ export default function Sales() {
   };
 
   const setupRealtimeSubscription = () => {
-    const subscription = supabase
-      .channel("leads")
-      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => {
-        loadLeads();
-      })
+    const leadsSubscription = supabase
+      .channel("leads-sales")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "leads" },
+        (payload: any) => {
+          const newLead = payload.new;
+          setLeads((prevLeads) => [newLead, ...prevLeads]);
+          toast({
+            title: "New Lead",
+            description: `${newLead.name} has submitted a contact form`,
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "leads" },
+        (payload: any) => {
+          const updatedLead = payload.new;
+          setLeads((prevLeads) =>
+            prevLeads.map((lead) =>
+              lead.id === updatedLead.id ? updatedLead : lead
+            )
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "leads" },
+        (payload: any) => {
+          const deletedLead = payload.old;
+          setLeads((prevLeads) =>
+            prevLeads.filter((lead) => lead.id !== deletedLead.id)
+          );
+        }
+      )
       .subscribe();
 
-    return () => subscription.unsubscribe();
+    const projectsSubscription = supabase
+      .channel("projects-sales")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "projects" },
+        async () => {
+          const { data: projectsData } = await supabase
+            .from("projects")
+            .select("*");
+          setProjects(projectsData || []);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      leadsSubscription.unsubscribe();
+      projectsSubscription.unsubscribe();
+    };
   };
 
   const updateLeadStatus = async (leadId: string, newStatus: string) => {

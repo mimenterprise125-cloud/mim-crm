@@ -31,6 +31,53 @@ export default function Payments() {
     getCurrentUser();
     loadConvertedLeads();
     loadPayments();
+
+    // Subscribe to real-time changes in payments
+    const paymentsSubscription = supabase
+      .channel("payments-changes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "payments" },
+        () => {
+          loadPayments();
+          toast({
+            title: "New Payment",
+            description: "A new payment has been recorded",
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "payments" },
+        () => {
+          loadPayments();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "payments" },
+        () => {
+          loadPayments();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to real-time changes in leads
+    const leadsSubscription = supabase
+      .channel("leads-payments")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "leads" },
+        () => {
+          loadConvertedLeads();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      paymentsSubscription.unsubscribe();
+      leadsSubscription.unsubscribe();
+    };
   }, []);
 
   const getCurrentUser = async () => {

@@ -122,13 +122,36 @@ export default function Contacts() {
       .channel("leads")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "leads" },
-        () => {
-          loadContacts();
+        { event: "INSERT", schema: "public", table: "leads" },
+        (payload: any) => {
+          const newLead = payload.new as Lead;
+          setLeads((prevLeads) => [newLead, ...prevLeads]);
           toast({
-            title: "Updated",
-            description: "New contact received",
+            title: "New Contact",
+            description: `${newLead.name} has submitted a contact form`,
           });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "leads" },
+        (payload: any) => {
+          const updatedLead = payload.new as Lead;
+          setLeads((prevLeads) =>
+            prevLeads.map((lead) =>
+              lead.id === updatedLead.id ? updatedLead : lead
+            )
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "leads" },
+        (payload: any) => {
+          const deletedLead = payload.old as Lead;
+          setLeads((prevLeads) =>
+            prevLeads.filter((lead) => lead.id !== deletedLead.id)
+          );
         }
       )
       .subscribe();

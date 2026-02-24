@@ -61,6 +61,65 @@ export default function Leads() {
 
   useEffect(() => {
     loadLeads();
+
+    // Subscribe to real-time changes in leads
+    const leadsSubscription = supabase
+      .channel("leads-changes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "leads" },
+        (payload: any) => {
+          const newLead = payload.new;
+          setLeads((prevLeads) => [newLead, ...prevLeads]);
+          toast({
+            title: "New Lead",
+            description: `${newLead.name} has submitted a contact form`,
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "leads" },
+        (payload: any) => {
+          const updatedLead = payload.new;
+          setLeads((prevLeads) =>
+            prevLeads.map((lead) =>
+              lead.id === updatedLead.id ? updatedLead : lead
+            )
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "leads" },
+        (payload: any) => {
+          const deletedLead = payload.old;
+          setLeads((prevLeads) =>
+            prevLeads.filter((lead) => lead.id !== deletedLead.id)
+          );
+        }
+      )
+      .subscribe();
+
+    // Subscribe to real-time changes in projects
+    const projectsSubscription = supabase
+      .channel("projects-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "projects" },
+        async () => {
+          const { data: projectsData } = await supabase
+            .from("projects")
+            .select("*");
+          setProjects(projectsData || []);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      leadsSubscription.unsubscribe();
+      projectsSubscription.unsubscribe();
+    };
   }, [statusFilter]);
 
   const isLeadCompleted = (leadId: string) => {

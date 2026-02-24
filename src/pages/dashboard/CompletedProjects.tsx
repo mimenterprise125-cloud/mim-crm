@@ -48,6 +48,49 @@ export default function CompletedProjects() {
 
   useEffect(() => {
     loadProjects();
+
+    // Subscribe to real-time changes in completed_projects
+    const completedProjectsSubscription = supabase
+      .channel("completed-projects-changes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "completed_projects" },
+        (payload: any) => {
+          const newProject = payload.new as CompletedProject;
+          setProjects((prevProjects) => [newProject, ...prevProjects]);
+          toast({
+            title: "New Project Added",
+            description: `${newProject.name} has been added to completed projects`,
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "completed_projects" },
+        (payload: any) => {
+          const updatedProject = payload.new as CompletedProject;
+          setProjects((prevProjects) =>
+            prevProjects.map((p) =>
+              p.id === updatedProject.id ? updatedProject : p
+            )
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "completed_projects" },
+        (payload: any) => {
+          const deletedProject = payload.old as CompletedProject;
+          setProjects((prevProjects) =>
+            prevProjects.filter((p) => p.id !== deletedProject.id)
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      completedProjectsSubscription.unsubscribe();
+    };
   }, []);
 
   const loadProjects = async () => {

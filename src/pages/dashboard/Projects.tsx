@@ -65,6 +65,53 @@ export default function Projects() {
   useEffect(() => {
     loadProjects();
     loadLeads();
+
+    // Subscribe to real-time changes in projects
+    const projectsSubscription = supabase
+      .channel("projects-changes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "projects" },
+        () => {
+          loadProjects();
+          toast({
+            title: "New Project",
+            description: "A new project has been created",
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "projects" },
+        () => {
+          loadProjects();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "projects" },
+        () => {
+          loadProjects();
+        }
+      )
+      .subscribe();
+
+    // Subscribe to real-time changes in leads
+    const leadsSubscription = supabase
+      .channel("leads-projects")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "leads" },
+        () => {
+          loadLeads();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      projectsSubscription.unsubscribe();
+      leadsSubscription.unsubscribe();
+    };
   }, []);
 
   const loadProjects = async () => {

@@ -10,9 +10,15 @@ import productCasementWindow from "@/assets/product-casement-window.jpg";
 import productSlidingDoor from "@/assets/product-sliding-door.jpg";
 import productTiltTurn from "@/assets/product-tilt-turn.jpg";
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from "@/components/ui/carousel";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Autoplay from "embla-carousel-autoplay";
 import { useRef, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
+import { leadService } from "@/services/leadService";
 
 const iconMap: Record<string, any> = { Zap, VolumeX, Shield, Wrench };
 
@@ -24,9 +30,20 @@ const productImages: Record<string, string> = {
 };
 
 const Index = () => {
+  const { toast } = useToast();
   const autoplayPlugin = useRef(Autoplay({ delay: 3000, stopOnInteraction: false }));
   const [completedProjects, setCompletedProjects] = useState<any[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [form, setForm] = useState({ 
+    name: "", 
+    phone: "", 
+    location: "", 
+    projectType: "", 
+    message: "" 
+  });
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     loadCompletedProjects();
@@ -51,6 +68,55 @@ const Index = () => {
     }
   };
 
+  const handleSubmitQuote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Validate input
+      if (!form.name || !form.phone || !form.location || !form.projectType) {
+        toast({ 
+          title: "Validation Error", 
+          description: "Please fill in all required fields.",
+          variant: "destructive"
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Create lead
+      const result = await leadService.createLead({
+        name: form.name,
+        phone: form.phone,
+        location: form.location,
+        projectType: form.projectType,
+        message: form.message,
+      });
+
+      if (result.success) {
+        // Show confirmation modal
+        setShowConfirmation(true);
+        setShowQuoteModal(false);
+        // Clear form
+        setForm({ name: "", phone: "", location: "", projectType: "", message: "" });
+      } else {
+        toast({ 
+          title: "Error", 
+          description: "Failed to submit form. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <PublicLayout>
       {/* Hero */}
@@ -68,11 +134,9 @@ const Index = () => {
               MIM Enterprises – Authorised Partner of Prominance UPVC Doors & Windows
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link to="/contact">
-                <Button size="lg" className="text-base px-8">
-                  Get Free Quote <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
+              <Button size="lg" className="text-base px-8" onClick={() => setShowQuoteModal(true)}>
+                Get Free Quote <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
               <Link to="/contact">
                 <Button size="lg" variant="outline" className="text-base px-8 bg-primary-foreground/10 text-primary-foreground border-primary-foreground/30 hover:bg-primary-foreground/20">
                   Contact Us
@@ -231,13 +295,96 @@ const Index = () => {
           <p className="text-primary-foreground/70 mb-8 max-w-lg mx-auto">
             Our experts will visit your site, take measurements, and provide a detailed quotation — completely free.
           </p>
-          <Link to="/contact">
-            <Button size="lg" variant="secondary" className="text-base px-8">
-              Schedule Free Visit <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
+          <Button size="lg" variant="secondary" className="text-base px-8" onClick={() => setShowQuoteModal(true)}>
+            Schedule Free Visit <ArrowRight className="ml-2 h-5 w-5" />
+          </Button>
         </div>
       </section>
+
+      {/* Get Free Quote Modal */}
+      <Dialog open={showQuoteModal} onOpenChange={setShowQuoteModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Get a Free Quote</DialogTitle>
+            <DialogDescription>
+              Fill in your details and our experts will contact you with a customized quote.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmitQuote} className="space-y-4">
+            <Input 
+              placeholder="Full Name" 
+              value={form.name} 
+              onChange={e => setForm({ ...form, name: e.target.value })} 
+              required 
+              disabled={loading}
+            />
+            <Input 
+              placeholder="Phone Number" 
+              value={form.phone} 
+              onChange={e => setForm({ ...form, phone: e.target.value })} 
+              required
+              disabled={loading}
+            />
+            <Input 
+              placeholder="Location" 
+              value={form.location} 
+              onChange={e => setForm({ ...form, location: e.target.value })} 
+              required
+              disabled={loading}
+            />
+            <Select value={form.projectType} onValueChange={v => setForm({ ...form, projectType: v })}>
+              <SelectTrigger disabled={loading}><SelectValue placeholder="Project Type" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="residential">Residential</SelectItem>
+                <SelectItem value="commercial">Commercial</SelectItem>
+                <SelectItem value="industrial">Industrial</SelectItem>
+                <SelectItem value="renovation">Renovation</SelectItem>
+              </SelectContent>
+            </Select>
+            <Textarea 
+              placeholder="Tell us about your project (optional)" 
+              value={form.message} 
+              onChange={e => setForm({ ...form, message: e.target.value })} 
+              rows={3}
+              disabled={loading}
+            />
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Submitting..." : "Get Free Quote"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Modal */}
+      <Dialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex justify-center mb-4">
+              <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+            </div>
+            <DialogTitle className="text-center text-2xl">Quote Request Received!</DialogTitle>
+            <DialogDescription className="text-center text-base">
+              Thank you for requesting a quote. Our experts will review your requirements and contact you within 24 hours.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-6 space-y-3">
+            <p className="text-sm text-muted-foreground text-center">
+              📧 We'll send you updates via email and SMS
+            </p>
+            <p className="text-sm text-muted-foreground text-center">
+              ☎️ You can also call us at +91 98765 43210
+            </p>
+          </div>
+          <Button 
+            onClick={() => setShowConfirmation(false)} 
+            className="w-full mt-6"
+          >
+            Got it!
+          </Button>
+        </DialogContent>
+      </Dialog>
     </PublicLayout>
   );
 };
