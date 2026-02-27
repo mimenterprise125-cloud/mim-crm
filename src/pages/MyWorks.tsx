@@ -168,7 +168,8 @@ export default function MyWorks() {
     }
   };
 
-  const totalPaid = customerData?.payments.filter(p => p.status === "PAID").reduce((sum, p) => sum + p.amount, 0) || 0;
+  // Calculate total paid including advance payments
+  const totalPaid = customerData?.payments.filter(p => p.status === "PAID" || p.type === "ADVANCE").reduce((sum, p) => sum + p.amount, 0) || 0;
   const totalBalance = (customerData?.project?.final_amount || 0) - totalPaid;
   const paidPercentage = customerData?.project?.final_amount ? (totalPaid / customerData.project.final_amount) * 100 : 0;
 
@@ -287,33 +288,33 @@ export default function MyWorks() {
 
               {/* Quick Info Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-xs text-blue-600 font-medium mb-1">Name</p>
-                  <p className="text-sm md:text-base font-bold text-blue-900 truncate">{customerData.lead.name}</p>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <p className="text-xs text-slate-600 font-medium mb-1">Name</p>
+                  <p className="text-sm md:text-base font-bold text-slate-900 truncate">{customerData.lead.name}</p>
                 </div>
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <p className="text-xs text-green-600 font-medium mb-1">Phone</p>
-                  <p className="text-sm md:text-base font-bold text-green-900">{customerData.lead.phone}</p>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <p className="text-xs text-slate-600 font-medium mb-1">Phone</p>
+                  <p className="text-sm md:text-base font-bold text-slate-900">{customerData.lead.phone}</p>
                 </div>
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <p className="text-xs text-purple-600 font-medium mb-1">Location</p>
-                  <p className="text-sm md:text-base font-bold text-purple-900 truncate">{customerData.lead.location}</p>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <p className="text-xs text-slate-600 font-medium mb-1">Location</p>
+                  <p className="text-sm md:text-base font-bold text-slate-900 truncate">{customerData.lead.location}</p>
                 </div>
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                  <p className="text-xs text-orange-600 font-medium mb-1">Project Type</p>
-                  <p className="text-sm md:text-base font-bold text-orange-900 truncate">{customerData.lead.project_type}</p>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <p className="text-xs text-slate-600 font-medium mb-1">Project Type</p>
+                  <p className="text-sm md:text-base font-bold text-slate-900 truncate">{customerData.lead.project_type}</p>
                 </div>
               </div>
 
               {/* Project Details Card */}
               {customerData.project ? (
                 <div className="space-y-6">
-                  <Card className="border-2 border-primary/30 shadow-lg">
-                    <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
+                  <Card className="border-2 border-slate-300/50 shadow-lg">
+                    <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-50/50 border-b">
                       <div className="flex items-center justify-between">
                         <CardTitle className="flex items-center gap-2">
-                          <div className="p-2 bg-primary/10 rounded-lg">
-                            <svg className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <div className="p-2 bg-slate-200 rounded-lg">
+                            <svg className="h-5 w-5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                             </svg>
                           </div>
@@ -326,42 +327,42 @@ export default function MyWorks() {
                     </CardHeader>
                     <CardContent className="pt-6">
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="p-4 bg-gray-50 rounded-lg">
-                          <p className="text-xs text-muted-foreground mb-1 font-medium">TOTAL SQFT</p>
-                          <p className="text-lg md:text-xl font-bold text-primary">
+                        <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                          <p className="text-xs text-slate-600 mb-1 font-medium">TOTAL SQFT</p>
+                          <p className="text-lg md:text-xl font-bold text-slate-900">
                             {customerData.project.total_sqft.toLocaleString("en-IN")}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">sq.ft</p>
+                          <p className="text-xs text-slate-600 mt-1">sq.ft</p>
                         </div>
-                        <div className="p-4 bg-gray-50 rounded-lg">
-                          <p className="text-xs text-muted-foreground mb-1 font-medium">RATE/SQFT</p>
-                          <p className="text-lg md:text-xl font-bold text-primary">
-                            ₹{(customerData.project.rate_per_sqft / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                        <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                          <p className="text-xs text-slate-600 mb-1 font-medium">RATE/SQFT</p>
+                          <p className="text-lg md:text-xl font-bold text-slate-900">
+                            ₹{(customerData.project.rate_per_sqft).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">per sq.ft</p>
+                          <p className="text-xs text-slate-600 mt-1">per sq.ft</p>
                         </div>
-                        <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                          <p className="text-xs text-green-700 mb-1 font-medium">TOTAL AMOUNT</p>
-                          <p className="text-lg md:text-xl font-bold text-green-700">
-                            ₹{(customerData.project.final_amount / 100000).toFixed(1)}L
+                        <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                          <p className="text-xs text-slate-600 mb-1 font-medium">TOTAL AMOUNT</p>
+                          <p className="text-lg md:text-xl font-bold text-slate-900">
+                            ₹{(customerData.project.final_amount).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                           </p>
-                          <p className="text-xs text-green-600 mt-1">project value</p>
+                          <p className="text-xs text-slate-600 mt-1">project value</p>
                         </div>
-                        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                          <p className="text-xs text-blue-700 mb-1 font-medium">DUE DATE</p>
-                          <p className="text-lg md:text-xl font-bold text-blue-700">
+                        <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                          <p className="text-xs text-slate-600 mb-1 font-medium">DUE DATE</p>
+                          <p className="text-lg md:text-xl font-bold text-slate-900">
                             {format(new Date(customerData.project.expected_completion_date), "MMM dd")}
                           </p>
-                          <p className="text-xs text-blue-600 mt-1">{format(new Date(customerData.project.expected_completion_date), "yyyy")}</p>
+                          <p className="text-xs text-slate-600 mt-1">{format(new Date(customerData.project.expected_completion_date), "yyyy")}</p>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
 
                   {/* Payment Summary */}
-                  <Card className="border-2 border-green-300/50">
-                    <CardHeader className="bg-gradient-to-r from-green-50 to-green-50/50 border-b">
-                      <CardTitle className="flex items-center gap-2 text-green-900">
+                  <Card className="border-2 border-slate-300/50">
+                    <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-50/50 border-b">
+                      <CardTitle className="flex items-center gap-2 text-slate-900">
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
@@ -370,27 +371,20 @@ export default function MyWorks() {
                     </CardHeader>
                     <CardContent className="pt-6">
                       <div className="space-y-4">
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                            <p className="text-xs text-green-600 font-medium mb-2">PAID</p>
-                            <p className="text-2xl font-bold text-green-700">
-                              ₹{(totalPaid / 100000).toFixed(1)}L
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="text-center p-4 bg-slate-50 rounded-lg border border-slate-200">
+                            <p className="text-xs sm:text-sm text-slate-600 font-medium mb-2 truncate">PAID & ADVANCE</p>
+                            <p className="text-xl sm:text-2xl font-bold text-slate-900 break-words">
+                              ₹{totalPaid.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                             </p>
-                            <p className="text-xs text-green-600 mt-1 font-semibold">{paidPercentage.toFixed(0)}%</p>
+                            <p className="text-xs text-slate-600 mt-1 font-semibold">{paidPercentage.toFixed(0)}%</p>
                           </div>
-                          <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
-                            <p className="text-xs text-orange-600 font-medium mb-2">PENDING</p>
-                            <p className="text-2xl font-bold text-orange-700">
-                              ₹{(totalBalance / 100000).toFixed(1)}L
+                          <div className="text-center p-4 bg-slate-50 rounded-lg border border-slate-200">
+                            <p className="text-xs sm:text-sm text-slate-600 font-medium mb-2 truncate">PENDING</p>
+                            <p className="text-xl sm:text-2xl font-bold text-slate-900 break-words">
+                              ₹{totalBalance.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                             </p>
-                            <p className="text-xs text-orange-600 mt-1 font-semibold">{(100 - paidPercentage).toFixed(0)}%</p>
-                          </div>
-                          <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                            <p className="text-xs text-blue-600 font-medium mb-2">TOTAL</p>
-                            <p className="text-2xl font-bold text-blue-700">
-                              ₹{(customerData.project.final_amount / 100000).toFixed(1)}L
-                            </p>
-                            <p className="text-xs text-blue-600 mt-1 font-semibold">project cost</p>
+                            <p className="text-xs text-slate-600 mt-1 font-semibold">{(100 - paidPercentage).toFixed(0)}%</p>
                           </div>
                         </div>
 
@@ -446,7 +440,7 @@ export default function MyWorks() {
                                 )}
                               </div>
                               <div className="text-right flex-shrink-0 ml-2">
-                                <p className="font-bold text-base md:text-lg text-primary">₹{(payment.amount / 100000).toFixed(1)}L</p>
+                                <p className="font-bold text-base md:text-lg text-primary">₹{payment.amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</p>
                                 <Badge className={`text-xs mt-1 ${getPaymentStatusColor(payment.status)}`}>
                                   {payment.status}
                                 </Badge>
