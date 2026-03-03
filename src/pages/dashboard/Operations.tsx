@@ -336,7 +336,7 @@ export default function Operations() {
                 <h2 className="text-2xl font-bold">Active Projects ({projects.filter(p => p.status !== "COMPLETED").length})</h2>
                 <p className="text-sm text-muted-foreground">Projects currently in progress</p>
               </div>
-              <div className="grid gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {projects.filter(p => p.status !== "COMPLETED").map((project) => {
                   const daysRemaining = differenceInDays(
                     new Date(project.expected_completion_date),
@@ -577,7 +577,7 @@ export default function Operations() {
                 <h2 className="text-2xl font-bold text-green-600 mt-4">Completed Projects ({projects.filter(p => p.status === "COMPLETED").length})</h2>
                 <p className="text-sm text-muted-foreground">Successfully finished projects</p>
               </div>
-              <div className="grid gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {projects.filter(p => p.status === "COMPLETED").map((project) => {
                   const daysRemaining = differenceInDays(
                     new Date(project.expected_completion_date),

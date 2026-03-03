@@ -537,7 +537,7 @@ export default function Projects() {
               <h2 className="text-xl font-heading font-semibold mb-2">Unattended Converted Leads</h2>
               <p className="text-sm text-muted-foreground">Converted leads waiting for project details to be filled</p>
             </div>
-            <div className="grid gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {getUnattendedLeads().length === 0 ? (
                 <Card className="border-dashed">
                   <CardContent className="flex items-center justify-center py-12">
@@ -680,7 +680,7 @@ export default function Projects() {
               <h2 className="text-xl font-heading font-semibold mb-2">Attended Projects</h2>
               <p className="text-sm text-muted-foreground">Projects with complete details and tracking</p>
             </div>
-            <div className="grid gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {projects.length === 0 ? (
                 <Card className="border-dashed">
                   <CardContent className="flex items-center justify-center py-12">
