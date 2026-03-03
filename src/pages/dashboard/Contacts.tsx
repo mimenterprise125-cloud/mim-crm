@@ -10,8 +10,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
-import { Phone, MapPin, RefreshCw, Calendar, MessageSquare, PhoneCall } from "lucide-react";
+import { Phone, MapPin, RefreshCw, Calendar, MessageSquare, PhoneCall, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -45,6 +51,8 @@ export default function Contacts() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const { toast } = useToast();
 
   const loadContacts = async () => {
@@ -231,7 +239,7 @@ export default function Contacts() {
         </div>
 
         {/* Contacts Grid */}
-        <div className="grid gap-6">
+        <div className="space-y-6">
           {leads.length === 0 ? (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12">
@@ -240,112 +248,191 @@ export default function Contacts() {
               </CardContent>
             </Card>
           ) : (
-            leads.map((lead) => (
-              <Card
-                key={lead.id}
-                className="hover:shadow-lg transition-all duration-300 overflow-hidden"
-              >
-                <div className={`h-1 ${lead.status === 'COMPLETED' ? 'bg-emerald-500' : lead.status === 'CONVERTED' ? 'bg-green-500' : lead.status === 'CONTACTED' ? 'bg-yellow-500' : lead.status === 'FOLLOW_UP' ? 'bg-purple-500' : lead.status === 'SITE_VISIT' ? 'bg-indigo-500' : lead.status === 'QUOTATION_SENT' ? 'bg-orange-500' : lead.status === 'NEGOTIATION' ? 'bg-cyan-500' : lead.status === 'LOST' ? 'bg-red-500' : 'bg-blue-500'}`} />
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <CardTitle className="text-xl">{lead.name}</CardTitle>
-                        {lead.status !== 'COMPLETED' && (
-                          <Badge className={statusColors[lead.status]}>
-                            {lead.status}
-                          </Badge>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {leads.map((lead) => (
+                <Card
+                  key={lead.id}
+                  className="hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer"
+                  onClick={() => {
+                    setSelectedLead(lead);
+                    setShowDetailModal(true);
+                  }}
+                >
+                  <div className={`h-1 ${lead.status === 'COMPLETED' ? 'bg-emerald-500' : lead.status === 'CONVERTED' ? 'bg-green-500' : lead.status === 'CONTACTED' ? 'bg-yellow-500' : lead.status === 'FOLLOW_UP' ? 'bg-purple-500' : lead.status === 'SITE_VISIT' ? 'bg-indigo-500' : lead.status === 'QUOTATION_SENT' ? 'bg-orange-500' : lead.status === 'NEGOTIATION' ? 'bg-cyan-500' : lead.status === 'LOST' ? 'bg-red-500' : 'bg-blue-500'}`} />
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <CardTitle className="text-lg truncate">{lead.name}</CardTitle>
+                          {lead.status !== 'COMPLETED' && (
+                            <Badge className={`${statusColors[lead.status]} shrink-0`}>
+                              {lead.status}
+                            </Badge>
+                          )}
+                        </div>
+                        {lead.message && (
+                          <p className="text-xs text-muted-foreground italic line-clamp-2">
+                            "{lead.message}"
+                          </p>
                         )}
                       </div>
-                      {lead.message && (
-                        <p className="text-sm text-muted-foreground italic">
-                          "{lead.message}"
-                        </p>
-                      )}
                     </div>
-                    <div className="w-48">
-                      {lead.status === 'COMPLETED' || isLeadCompleted(lead.id) ? (
-                        <div className="p-2 bg-muted rounded text-sm text-muted-foreground">
-                          Project Completed
-                        </div>
-                      ) : (
-                        <Select
-                          value={lead.status}
-                          onValueChange={(newStatus) => updateContactStatus(lead.id, newStatus)}
-                          disabled={updatingId === lead.id}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="NEW">New</SelectItem>
-                            <SelectItem value="CONTACTED">Contacted</SelectItem>
-                            <SelectItem value="FOLLOW_UP">Follow Up</SelectItem>
-                            <SelectItem value="SITE_VISIT">Site Visit</SelectItem>
-                            <SelectItem value="QUOTATION_SENT">Quotation Sent</SelectItem>
-                            <SelectItem value="NEGOTIATION">Negotiation</SelectItem>
-                            <SelectItem value="CONVERTED">Converted</SelectItem>
-                            <SelectItem value="LOST">Lost</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  </CardHeader>
+                  <CardContent className="space-y-3">
                     {/* Phone */}
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Phone className="h-4 w-4" />
-                        <span>Phone</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm">{lead.phone}</p>
-                        <Button
-                          onClick={() => window.location.href = `tel:${lead.phone}`}
-                          variant="outline"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                          title="Call this number"
-                        >
-                          <PhoneCall className="h-4 w-4 text-green-600" />
-                        </Button>
-                      </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <p className="font-medium text-sm truncate">{lead.phone}</p>
                     </div>
 
                     {/* Location */}
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <MapPin className="h-4 w-4" />
-                        <span>Location</span>
-                      </div>
-                      <p className="font-medium text-sm">{lead.location}</p>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <p className="font-medium text-sm truncate">{lead.location}</p>
                     </div>
 
                     {/* Project Type */}
-                    <div className="space-y-1">
+                    <div>
                       <p className="text-xs text-muted-foreground">Project Type</p>
                       <p className="font-medium text-sm capitalize">{lead.project_type}</p>
                     </div>
 
                     {/* Date */}
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Calendar className="h-4 w-4" />
-                        <span>Submitted</span>
-                      </div>
-                      <p className="font-medium text-sm">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <p className="font-medium text-xs">
                         {format(new Date(lead.created_at), "MMM d, yyyy")}
                       </p>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </div>
       </div>
+
+      {/* Detail Modal */}
+      <Dialog open={showDetailModal} onOpenChange={setShowDetailModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <div className="flex items-center justify-between w-full">
+              <DialogTitle>{selectedLead?.name}</DialogTitle>
+              <Button
+                onClick={() => setShowDetailModal(false)}
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </DialogHeader>
+          
+          {selectedLead && (
+            <div className="space-y-6">
+              {/* Status Section */}
+              <div className="space-y-2">
+                <h3 className="font-semibold">Status</h3>
+                {selectedLead.status === 'COMPLETED' || isLeadCompleted(selectedLead.id) ? (
+                  <div className="p-3 bg-green-100 rounded text-green-800">
+                    Project Completed
+                  </div>
+                ) : (
+                  <Select
+                    value={selectedLead.status}
+                    onValueChange={(newStatus) => {
+                      updateContactStatus(selectedLead.id, newStatus);
+                      setShowDetailModal(false);
+                    }}
+                    disabled={updatingId === selectedLead.id}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NEW">New</SelectItem>
+                      <SelectItem value="CONTACTED">Contacted</SelectItem>
+                      <SelectItem value="FOLLOW_UP">Follow Up</SelectItem>
+                      <SelectItem value="SITE_VISIT">Site Visit</SelectItem>
+                      <SelectItem value="QUOTATION_SENT">Quotation Sent</SelectItem>
+                      <SelectItem value="NEGOTIATION">Negotiation</SelectItem>
+                      <SelectItem value="CONVERTED">Converted</SelectItem>
+                      <SelectItem value="LOST">Lost</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* Contact Information Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Phone */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-primary" />
+                    <span className="font-semibold">Phone</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm">{selectedLead.phone}</p>
+                    <Button
+                      onClick={() => window.location.href = `tel:${selectedLead.phone}`}
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      title="Call this number"
+                    >
+                      <PhoneCall className="h-4 w-4 text-green-600" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Location */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <span className="font-semibold">Location</span>
+                  </div>
+                  <p className="text-sm">{selectedLead.location}</p>
+                </div>
+
+                {/* Project Type */}
+                <div className="space-y-2">
+                  <span className="font-semibold">Project Type</span>
+                  <p className="text-sm capitalize">{selectedLead.project_type}</p>
+                </div>
+
+                {/* Source */}
+                <div className="space-y-2">
+                  <span className="font-semibold">Source</span>
+                  <p className="text-sm capitalize">{selectedLead.source}</p>
+                </div>
+
+                {/* Submitted Date */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    <span className="font-semibold">Submitted</span>
+                  </div>
+                  <p className="text-sm">
+                    {format(new Date(selectedLead.created_at), "MMM d, yyyy h:mm a")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Message */}
+              {selectedLead.message && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4 text-primary" />
+                    <span className="font-semibold">Message</span>
+                  </div>
+                  <p className="text-sm bg-muted p-3 rounded">{selectedLead.message}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }
