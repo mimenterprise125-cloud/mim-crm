@@ -10,6 +10,8 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+    middlewareMode: false,
+    historyApiFallback: true,
   },
   plugins: [react()].filter(Boolean),
   resolve: {

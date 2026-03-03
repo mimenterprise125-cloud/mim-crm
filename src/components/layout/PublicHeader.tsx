@@ -20,9 +20,7 @@ export default function PublicHeader() {
         <nav className="hidden md:flex items-center gap-6">
           <Link to="/" className="text-sm font-medium text-foreground hover:text-primary transition-colors">Home</Link>
           <Link to="/contact" className="text-sm font-medium text-foreground hover:text-primary transition-colors">Contact</Link>
-          <Link to="/login">
-            <Button size="sm">Login</Button>
-          </Link>
+          <Link to="/my-works" className="text-sm font-medium text-foreground hover:text-primary transition-colors">My Works</Link>
         </nav>
 
         <button className="md:hidden" onClick={() => setOpen(!open)}>
@@ -34,9 +32,7 @@ export default function PublicHeader() {
         <div className="md:hidden border-t border-border bg-card p-4 space-y-3">
           <Link to="/" className="block text-sm font-medium" onClick={() => setOpen(false)}>Home</Link>
           <Link to="/contact" className="block text-sm font-medium" onClick={() => setOpen(false)}>Contact</Link>
-          <Link to="/login" onClick={() => setOpen(false)}>
-            <Button size="sm" className="w-full">Login</Button>
-          </Link>
+          <Link to="/my-works" className="block text-sm font-medium" onClick={() => setOpen(false)}>My Works</Link>
         </div>
       )}
     </header>

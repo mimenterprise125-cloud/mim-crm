@@ -51,6 +51,9 @@ const Index = () => {
 
   const loadCompletedProjects = async () => {
     try {
+      // IMPORTANT: Load ONLY from completed_projects table (admin-uploaded portfolio items)
+      // NOT from projects table with COMPLETED status
+      // The completed_projects table is specifically for showcase/portfolio items uploaded by admins
       const { data, error } = await supabase
         .from("completed_projects")
         .select("*")
@@ -190,7 +193,7 @@ const Index = () => {
         <div className="container">
           <h2 className="text-3xl font-heading font-bold text-center mb-4 text-primary-foreground">Why Choose Us</h2>
           <div className="h-1 w-16 bg-primary-foreground/30 rounded-full mx-auto mb-12" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {whyChooseUs.map((item) => {
               const Icon = iconMap[item.icon];
               return (
@@ -212,7 +215,7 @@ const Index = () => {
         <div className="container">
           <h2 className="text-3xl font-heading font-bold text-center mb-4">Completed Projects</h2>
           <div className="h-1 w-16 bg-primary rounded-full mx-auto mb-12" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {loadingProjects ? (
               <div className="col-span-full flex items-center justify-center py-12">
                 <p className="text-muted-foreground">Loading projects...</p>

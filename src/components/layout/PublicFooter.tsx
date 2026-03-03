@@ -1,4 +1,5 @@
 import { Building2, Phone, Mail, MapPin, Facebook, Instagram, Linkedin } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function PublicFooter() {
   return (
@@ -27,17 +28,12 @@ export default function PublicFooter() {
         </div>
 
         <div>
-          <h4 className="font-heading font-semibold mb-4">Follow Us</h4>
-          <div className="flex gap-3">
-            <a href="#" className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors">
-              <Facebook className="h-5 w-5" />
-            </a>
-            <a href="#" className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors">
-              <Instagram className="h-5 w-5" />
-            </a>
-            <a href="#" className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors">
-              <Linkedin className="h-5 w-5" />
-            </a>
+          <h4 className="font-heading font-semibold mb-4">Quick Links</h4>
+          <div className="space-y-3 text-sm">
+            <div><a href="/" className="opacity-70 hover:opacity-100 transition-opacity">Home</a></div>
+            <div><a href="/contact" className="opacity-70 hover:opacity-100 transition-opacity">Contact</a></div>
+            <div><a href="/my-works" className="opacity-70 hover:opacity-100 transition-opacity">My Works</a></div>
+            <div><Link to="/login" className="opacity-70 hover:opacity-100 transition-opacity">Login</Link></div>
           </div>
         </div>
       </div>
