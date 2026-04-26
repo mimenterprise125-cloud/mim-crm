@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Edit, Trash2, Check, X, Calendar } from "lucide-react";
+import { Plus, Edit, Trash2, Check, X, Calendar, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
 
 interface Employee {
   id: string;
@@ -16,12 +17,12 @@ interface Employee {
   role: string;
   phone: string;
   status: "active" | "inactive";
-  joinDate: string;
+  created_at: string;
 }
 
 interface AttendanceRecord {
   id: string;
-  employeeId: string;
+  employee_id: string;
   date: string;
   status: "present" | "absent" | "leave";
   notes: string;
@@ -29,60 +30,163 @@ interface AttendanceRecord {
 
 export default function Employees() {
   const { toast } = useToast();
-  const [employees, setEmployees] = useState<Employee[]>([
-    { id: "1", name: "John Doe", email: "john@example.com", role: "Sales", phone: "9876543210", status: "active", joinDate: "2024-01-15" },
-    { id: "2", name: "Jane Smith", email: "jane@example.com", role: "Operations", phone: "9876543211", status: "active", joinDate: "2024-02-20" },
-    { id: "3", name: "Mike Johnson", email: "mike@example.com", role: "Admin", phone: "9876543212", status: "active", joinDate: "2024-01-10" },
-  ]);
-  
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>([
-    { id: "1", employeeId: "1", date: new Date().toISOString().split('T')[0], status: "present", notes: "" },
-    { id: "2", employeeId: "2", date: new Date().toISOString().split('T')[0], status: "present", notes: "" },
-  ]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   const [activeTab, setActiveTab] = useState<"employees" | "attendance">("employees");
   const [addModal, setAddModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   
   const [formData, setFormData] = useState({ name: "", phone: "", role: "Sales" });
   const [attendanceFormData, setAttendanceFormData] = useState<{ employeeId: string; status: "present" | "absent" | "leave"; notes: string }>({ employeeId: "", status: "present", notes: "" });
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const handleAddEmployee = () => {
+  // Load employees from database
+  const loadEmployees = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("employees")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      
+      setEmployees(data || []);
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: "Failed to load employees", 
+        variant: "destructive" 
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load attendance records from database
+  const loadAttendance = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("attendance")
+        .select("*")
+        .order("date", { ascending: false });
+
+      if (error) throw error;
+      
+      setAttendance(data || []);
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: "Failed to load attendance records", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  useEffect(() => {
+    loadEmployees();
+    loadAttendance();
+
+    // Subscribe to real-time changes
+    const employeesSubscription = supabase
+      .channel("employees-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "employees" }, () => {
+        loadEmployees();
+      })
+      .subscribe();
+
+    const attendanceSubscription = supabase
+      .channel("attendance-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, () => {
+        loadAttendance();
+      })
+      .subscribe();
+
+    return () => {
+      employeesSubscription.unsubscribe();
+      attendanceSubscription.unsubscribe();
+    };
+  }, []);
+
+  const handleAddEmployee = async () => {
     if (!formData.name || !formData.phone) {
       toast({ title: "Error", description: "Please fill name and phone number", variant: "destructive" });
       return;
     }
     
-    if (editingId) {
-      setEmployees(employees.map(e => e.id === editingId 
-        ? { ...e, name: formData.name, phone: formData.phone, role: formData.role }
-        : e
-      ));
-      toast({ title: "Success", description: "Employee updated successfully" });
-      setEditingId(null);
-    } else {
-      const newEmployee: Employee = {
-        id: Date.now().toString(),
-        name: formData.name,
-        email: `${formData.name.toLowerCase().replace(/\s/g, '.')}@company.com`,
-        phone: formData.phone,
-        role: formData.role,
-        status: "active",
-        joinDate: new Date().toISOString().split('T')[0],
-      };
-      setEmployees([...employees, newEmployee]);
-      toast({ title: "Success", description: "Employee added successfully" });
+    setSubmitting(true);
+    try {
+      const generatedEmail = `${formData.name.toLowerCase().replace(/\s/g, '.')}@company.com`;
+
+      if (editingId) {
+        const { error } = await supabase
+          .from("employees")
+          .update({
+            name: formData.name,
+            phone: formData.phone,
+            role: formData.role,
+            email: generatedEmail,
+          })
+          .eq("id", editingId);
+
+        if (error) throw error;
+        
+        toast({ title: "Success", description: "Employee updated successfully" });
+        setEditingId(null);
+      } else {
+        const { error } = await supabase
+          .from("employees")
+          .insert([{
+            name: formData.name,
+            email: generatedEmail,
+            phone: formData.phone,
+            role: formData.role,
+            status: "active",
+          }]);
+
+        if (error) throw error;
+        
+        toast({ title: "Success", description: "Employee added successfully" });
+      }
+
+      await loadEmployees();
+      setFormData({ name: "", phone: "", role: "Sales" });
+      setAddModal(false);
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: error instanceof Error ? error.message : "Failed to save employee", 
+        variant: "destructive" 
+      });
+    } finally {
+      setSubmitting(false);
     }
-    
-    setFormData({ name: "", phone: "", role: "Sales" });
-    setAddModal(false);
   };
 
-  const handleDeleteEmployee = (id: string) => {
-    setEmployees(employees.filter(e => e.id !== id));
-    toast({ title: "Success", description: "Employee deleted successfully" });
+  const handleDeleteEmployee = async (id: string) => {
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("employees")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast({ title: "Success", description: "Employee deleted successfully" });
+      await loadEmployees();
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: "Failed to delete employee", 
+        variant: "destructive" 
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleEditEmployee = (employee: Employee) => {
@@ -91,28 +195,60 @@ export default function Employees() {
     setAddModal(true);
   };
 
-  const handleAddAttendance = () => {
+  const handleAddAttendance = async () => {
     if (!attendanceFormData.employeeId) {
       toast({ title: "Error", description: "Please select an employee", variant: "destructive" });
       return;
     }
     
-    const newRecord: AttendanceRecord = {
-      id: Date.now().toString(),
-      employeeId: attendanceFormData.employeeId,
-      date: attendanceDate,
-      status: attendanceFormData.status,
-      notes: attendanceFormData.notes,
-    };
-    
-    setAttendance([...attendance, newRecord]);
-    toast({ title: "Success", description: "Attendance marked successfully" });
-    setAttendanceFormData({ employeeId: "", status: "present", notes: "" });
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("attendance")
+        .insert([{
+          employee_id: attendanceFormData.employeeId,
+          date: attendanceDate,
+          status: attendanceFormData.status,
+          notes: attendanceFormData.notes,
+        }]);
+
+      if (error) throw error;
+
+      toast({ title: "Success", description: "Attendance marked successfully" });
+      await loadAttendance();
+      setAttendanceFormData({ employeeId: "", status: "present", notes: "" });
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: error instanceof Error ? error.message : "Failed to mark attendance", 
+        variant: "destructive" 
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleDeleteAttendance = (id: string) => {
-    setAttendance(attendance.filter(a => a.id !== id));
-    toast({ title: "Success", description: "Attendance record deleted" });
+  const handleDeleteAttendance = async (id: string) => {
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("attendance")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast({ title: "Success", description: "Attendance record deleted" });
+      await loadAttendance();
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: "Failed to delete attendance record", 
+        variant: "destructive" 
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const getEmployeeName = (employeeId: string) => employees.find(e => e.id === employeeId)?.name || "Unknown";
@@ -127,6 +263,16 @@ export default function Employees() {
   };
 
   const stats = getAttendanceStats();
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -171,53 +317,61 @@ export default function Employees() {
         {activeTab === "employees" && (
           <Card>
             <CardContent className="p-4">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left p-3 font-medium text-muted-foreground">Name</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Email</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">Role</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Phone</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
-                      <th className="text-left p-3 font-medium text-muted-foreground">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {employees.map(employee => (
-                      <tr key={employee.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                        <td className="p-3 font-medium">{employee.name}</td>
-                        <td className="p-3 text-muted-foreground hidden sm:table-cell text-xs">{employee.email}</td>
-                        <td className="p-3 capitalize text-xs">{employee.role}</td>
-                        <td className="p-3 hidden lg:table-cell text-xs">{employee.phone}</td>
-                        <td className="p-3">
-                          <Badge className={employee.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
-                            {employee.status === "active" ? "Active" : "Inactive"}
-                          </Badge>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleEditEmployee(employee)}
-                              className="p-2 hover:bg-muted rounded transition-colors"
-                              title="Edit"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteEmployee(employee.id)}
-                              className="p-2 hover:bg-red-100 text-red-600 rounded transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
+              {employees.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No employees added yet</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left p-3 font-medium text-muted-foreground">Name</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Email</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Role</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Phone</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {employees.map(employee => (
+                        <tr key={employee.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                          <td className="p-3 font-medium">{employee.name}</td>
+                          <td className="p-3 text-muted-foreground hidden sm:table-cell text-xs">{employee.email}</td>
+                          <td className="p-3 capitalize text-xs">{employee.role}</td>
+                          <td className="p-3 hidden lg:table-cell text-xs">{employee.phone}</td>
+                          <td className="p-3">
+                            <Badge className={employee.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+                              {employee.status === "active" ? "Active" : "Inactive"}
+                            </Badge>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleEditEmployee(employee)}
+                                className="p-2 hover:bg-muted rounded transition-colors"
+                                disabled={submitting}
+                                title="Edit"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteEmployee(employee.id)}
+                                className="p-2 hover:bg-red-100 text-red-600 rounded transition-colors"
+                                disabled={submitting}
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -302,7 +456,10 @@ export default function Employees() {
                   <label className="text-sm font-medium mb-2 block">Notes (Optional)</label>
                   <Input placeholder="Add notes..." value={attendanceFormData.notes} onChange={(e) => setAttendanceFormData({...attendanceFormData, notes: e.target.value})} />
                 </div>
-                <Button onClick={handleAddAttendance} className="w-full">Mark Attendance</Button>
+                <Button onClick={handleAddAttendance} disabled={submitting} className="w-full">
+                  {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Mark Attendance
+                </Button>
               </CardContent>
             </Card>
 
@@ -312,45 +469,52 @@ export default function Employees() {
                 <CardTitle>Attendance Records</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left p-3 font-medium text-muted-foreground">Employee</th>
-                        <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
-                        <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
-                        <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Notes</th>
-                        <th className="text-left p-3 font-medium text-muted-foreground">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {attendance.map(record => (
-                        <tr key={record.id} className="border-b border-border/50 hover:bg-muted/30">
-                          <td className="p-3 font-medium">{getEmployeeName(record.employeeId)}</td>
-                          <td className="p-3 text-sm">{new Date(record.date).toLocaleDateString()}</td>
-                          <td className="p-3">
-                            <Badge className={
-                              record.status === "present" ? "bg-green-100 text-green-800" :
-                              record.status === "absent" ? "bg-red-100 text-red-800" :
-                              "bg-yellow-100 text-yellow-800"
-                            }>
-                              {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                            </Badge>
-                          </td>
-                          <td className="p-3 text-sm text-muted-foreground hidden sm:table-cell">{record.notes || "-"}</td>
-                          <td className="p-3">
-                            <button
-                              onClick={() => handleDeleteAttendance(record.id)}
-                              className="p-2 hover:bg-red-100 text-red-600 rounded transition-colors"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </td>
+                {attendance.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No attendance records yet</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border">
+                          <th className="text-left p-3 font-medium text-muted-foreground">Employee</th>
+                          <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
+                          <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                          <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Notes</th>
+                          <th className="text-left p-3 font-medium text-muted-foreground">Action</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {attendance.map(record => (
+                          <tr key={record.id} className="border-b border-border/50 hover:bg-muted/30">
+                            <td className="p-3 font-medium">{getEmployeeName(record.employee_id)}</td>
+                            <td className="p-3 text-sm">{new Date(record.date).toLocaleDateString()}</td>
+                            <td className="p-3">
+                              <Badge className={
+                                record.status === "present" ? "bg-green-100 text-green-800" :
+                                record.status === "absent" ? "bg-red-100 text-red-800" :
+                                "bg-yellow-100 text-yellow-800"
+                              }>
+                                {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                              </Badge>
+                            </td>
+                            <td className="p-3 text-sm text-muted-foreground hidden sm:table-cell">{record.notes || "-"}</td>
+                            <td className="p-3">
+                              <button
+                                onClick={() => handleDeleteAttendance(record.id)}
+                                disabled={submitting}
+                                className="p-2 hover:bg-red-100 text-red-600 rounded transition-colors"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -370,6 +534,7 @@ export default function Employees() {
                 placeholder="Full Name" 
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
+                disabled={submitting}
               />
             </div>
             <div>
@@ -378,11 +543,12 @@ export default function Employees() {
                 placeholder="Phone" 
                 value={formData.phone}
                 onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                disabled={submitting}
               />
             </div>
             <div>
               <label className="text-sm font-medium mb-1 block">Role</label>
-              <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
+              <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})} disabled={submitting}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -394,7 +560,8 @@ export default function Employees() {
                 </SelectContent>
               </Select>
             </div>
-            <Button className="w-full" onClick={handleAddEmployee}>
+            <Button className="w-full" onClick={handleAddEmployee} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               {editingId ? "Update Employee" : "Add Employee"}
             </Button>
           </div>
