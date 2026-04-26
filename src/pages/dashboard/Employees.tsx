@@ -1,16 +1,132 @@
 import { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
-import { mockUsers } from "@/data/mockData";
+import { Plus, Edit, Trash2, Check, X, Calendar } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  phone: string;
+  status: "active" | "inactive";
+  joinDate: string;
+}
+
+interface AttendanceRecord {
+  id: string;
+  employeeId: string;
+  date: string;
+  status: "present" | "absent" | "leave";
+  notes: string;
+}
 
 export default function Employees() {
+  const { toast } = useToast();
+  const [employees, setEmployees] = useState<Employee[]>([
+    { id: "1", name: "John Doe", email: "john@example.com", role: "Sales", phone: "9876543210", status: "active", joinDate: "2024-01-15" },
+    { id: "2", name: "Jane Smith", email: "jane@example.com", role: "Operations", phone: "9876543211", status: "active", joinDate: "2024-02-20" },
+    { id: "3", name: "Mike Johnson", email: "mike@example.com", role: "Admin", phone: "9876543212", status: "active", joinDate: "2024-01-10" },
+  ]);
+  
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([
+    { id: "1", employeeId: "1", date: new Date().toISOString().split('T')[0], status: "present", notes: "" },
+    { id: "2", employeeId: "2", date: new Date().toISOString().split('T')[0], status: "present", notes: "" },
+  ]);
+
+  const [activeTab, setActiveTab] = useState<"employees" | "attendance">("employees");
   const [addModal, setAddModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  
+  const [formData, setFormData] = useState({ name: "", phone: "", role: "Sales" });
+  const [attendanceFormData, setAttendanceFormData] = useState<{ employeeId: string; status: "present" | "absent" | "leave"; notes: string }>({ employeeId: "", status: "present", notes: "" });
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const handleAddEmployee = () => {
+    if (!formData.name || !formData.phone) {
+      toast({ title: "Error", description: "Please fill name and phone number", variant: "destructive" });
+      return;
+    }
+    
+    if (editingId) {
+      setEmployees(employees.map(e => e.id === editingId 
+        ? { ...e, name: formData.name, phone: formData.phone, role: formData.role }
+        : e
+      ));
+      toast({ title: "Success", description: "Employee updated successfully" });
+      setEditingId(null);
+    } else {
+      const newEmployee: Employee = {
+        id: Date.now().toString(),
+        name: formData.name,
+        email: `${formData.name.toLowerCase().replace(/\s/g, '.')}@company.com`,
+        phone: formData.phone,
+        role: formData.role,
+        status: "active",
+        joinDate: new Date().toISOString().split('T')[0],
+      };
+      setEmployees([...employees, newEmployee]);
+      toast({ title: "Success", description: "Employee added successfully" });
+    }
+    
+    setFormData({ name: "", phone: "", role: "Sales" });
+    setAddModal(false);
+  };
+
+  const handleDeleteEmployee = (id: string) => {
+    setEmployees(employees.filter(e => e.id !== id));
+    toast({ title: "Success", description: "Employee deleted successfully" });
+  };
+
+  const handleEditEmployee = (employee: Employee) => {
+    setFormData({ name: employee.name, phone: employee.phone, role: employee.role });
+    setEditingId(employee.id);
+    setAddModal(true);
+  };
+
+  const handleAddAttendance = () => {
+    if (!attendanceFormData.employeeId) {
+      toast({ title: "Error", description: "Please select an employee", variant: "destructive" });
+      return;
+    }
+    
+    const newRecord: AttendanceRecord = {
+      id: Date.now().toString(),
+      employeeId: attendanceFormData.employeeId,
+      date: attendanceDate,
+      status: attendanceFormData.status,
+      notes: attendanceFormData.notes,
+    };
+    
+    setAttendance([...attendance, newRecord]);
+    toast({ title: "Success", description: "Attendance marked successfully" });
+    setAttendanceFormData({ employeeId: "", status: "present", notes: "" });
+  };
+
+  const handleDeleteAttendance = (id: string) => {
+    setAttendance(attendance.filter(a => a.id !== id));
+    toast({ title: "Success", description: "Attendance record deleted" });
+  };
+
+  const getEmployeeName = (employeeId: string) => employees.find(e => e.id === employeeId)?.name || "Unknown";
+  const getTodayAttendance = () => attendance.filter(a => a.date === attendanceDate);
+  const getAttendanceStats = () => {
+    const today = getTodayAttendance();
+    return {
+      present: today.filter(a => a.status === "present").length,
+      absent: today.filter(a => a.status === "absent").length,
+      leave: today.filter(a => a.status === "leave").length,
+    };
+  };
+
+  const stats = getAttendanceStats();
 
   return (
     <DashboardLayout>
@@ -18,59 +134,269 @@ export default function Employees() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-heading font-bold">Employees</h1>
-            <p className="text-sm text-muted-foreground">Manage team members and roles</p>
+            <p className="text-sm text-muted-foreground">Manage team members, roles and attendance</p>
           </div>
-          <Button onClick={() => setAddModal(true)}><Plus className="h-4 w-4 mr-1" /> Add Employee</Button>
+          {activeTab === "employees" && (
+            <Button onClick={() => { setEditingId(null); setFormData({ name: "", phone: "", role: "Sales" }); setAddModal(true); }}>
+              <Plus className="h-4 w-4 mr-1" /> Add Employee
+            </Button>
+          )}
         </div>
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left p-3 font-medium text-muted-foreground">Name</th>
-                    <th className="text-left p-3 font-medium text-muted-foreground">Email</th>
-                    <th className="text-left p-3 font-medium text-muted-foreground">Role</th>
-                    <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mockUsers.map(u => (
-                    <tr key={u.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                      <td className="p-3 font-medium">{u.name}</td>
-                      <td className="p-3 text-muted-foreground">{u.email}</td>
-                      <td className="p-3 capitalize">{u.role}</td>
-                      <td className="p-3">
-                        <Badge className={u.active ? "bg-success text-success-foreground" : "bg-muted text-muted-foreground"}>
-                          {u.active ? "Active" : "Inactive"}
-                        </Badge>
-                      </td>
+        {/* Tabs */}
+        <div className="flex gap-2 border-b">
+          <button
+            onClick={() => setActiveTab("employees")}
+            className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+              activeTab === "employees"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Employees ({employees.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("attendance")}
+            className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+              activeTab === "attendance"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Attendance
+          </button>
+        </div>
+
+        {/* Employees Tab */}
+        {activeTab === "employees" && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left p-3 font-medium text-muted-foreground">Name</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Email</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Role</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Phone</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                      <th className="text-left p-3 font-medium text-muted-foreground">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {employees.map(employee => (
+                      <tr key={employee.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                        <td className="p-3 font-medium">{employee.name}</td>
+                        <td className="p-3 text-muted-foreground hidden sm:table-cell text-xs">{employee.email}</td>
+                        <td className="p-3 capitalize text-xs">{employee.role}</td>
+                        <td className="p-3 hidden lg:table-cell text-xs">{employee.phone}</td>
+                        <td className="p-3">
+                          <Badge className={employee.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}>
+                            {employee.status === "active" ? "Active" : "Inactive"}
+                          </Badge>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditEmployee(employee)}
+                              className="p-2 hover:bg-muted rounded transition-colors"
+                              title="Edit"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteEmployee(employee.id)}
+                              className="p-2 hover:bg-red-100 text-red-600 rounded transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Attendance Tab */}
+        {activeTab === "attendance" && (
+          <div className="space-y-6">
+            {/* Attendance Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Present Today</p>
+                      <p className="text-2xl font-bold text-green-600">{stats.present}</p>
+                    </div>
+                    <Check className="h-6 w-6 text-green-600/20" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Absent Today</p>
+                      <p className="text-2xl font-bold text-red-600">{stats.absent}</p>
+                    </div>
+                    <X className="h-6 w-6 text-red-600/20" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">On Leave</p>
+                      <p className="text-2xl font-bold text-yellow-600">{stats.leave}</p>
+                    </div>
+                    <Calendar className="h-6 w-6 text-yellow-600/20" />
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Mark Attendance Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Mark Attendance</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Date</label>
+                  <Input type="date" value={attendanceDate} onChange={(e) => setAttendanceDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Employee</label>
+                  <Select value={attendanceFormData.employeeId} onValueChange={(value) => setAttendanceFormData({...attendanceFormData, employeeId: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Employee" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {employees.map(emp => (
+                        <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Status</label>
+                  <Select value={attendanceFormData.status} onValueChange={(value) => setAttendanceFormData({...attendanceFormData, status: value as "present" | "absent" | "leave"})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="present">Present</SelectItem>
+                      <SelectItem value="absent">Absent</SelectItem>
+                      <SelectItem value="leave">Leave</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Notes (Optional)</label>
+                  <Input placeholder="Add notes..." value={attendanceFormData.notes} onChange={(e) => setAttendanceFormData({...attendanceFormData, notes: e.target.value})} />
+                </div>
+                <Button onClick={handleAddAttendance} className="w-full">Mark Attendance</Button>
+              </CardContent>
+            </Card>
+
+            {/* Attendance List */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Attendance Records</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left p-3 font-medium text-muted-foreground">Employee</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Date</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground hidden sm:table-cell">Notes</th>
+                        <th className="text-left p-3 font-medium text-muted-foreground">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {attendance.map(record => (
+                        <tr key={record.id} className="border-b border-border/50 hover:bg-muted/30">
+                          <td className="p-3 font-medium">{getEmployeeName(record.employeeId)}</td>
+                          <td className="p-3 text-sm">{new Date(record.date).toLocaleDateString()}</td>
+                          <td className="p-3">
+                            <Badge className={
+                              record.status === "present" ? "bg-green-100 text-green-800" :
+                              record.status === "absent" ? "bg-red-100 text-red-800" :
+                              "bg-yellow-100 text-yellow-800"
+                            }>
+                              {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
+                            </Badge>
+                          </td>
+                          <td className="p-3 text-sm text-muted-foreground hidden sm:table-cell">{record.notes || "-"}</td>
+                          <td className="p-3">
+                            <button
+                              onClick={() => handleDeleteAttendance(record.id)}
+                              className="p-2 hover:bg-red-100 text-red-600 rounded transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
 
+      {/* Add/Edit Employee Dialog */}
       <Dialog open={addModal} onOpenChange={setAddModal}>
         <DialogContent>
-          <DialogHeader><DialogTitle className="font-heading">Add Employee</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="font-heading">{editingId ? "Edit Employee" : "Add Employee"}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-4">
-            <Input placeholder="Full Name" />
-            <Input placeholder="Email" type="email" />
-            <Select>
-              <SelectTrigger><SelectValue placeholder="Select Role" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="sales">Sales</SelectItem>
-                <SelectItem value="operations">Operations</SelectItem>
-                <SelectItem value="accounts">Accounts</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button className="w-full" onClick={() => setAddModal(false)}>Add Employee</Button>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Full Name *</label>
+              <Input 
+                placeholder="Full Name" 
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Phone Number *</label>
+              <Input 
+                placeholder="Phone" 
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Role</label>
+              <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                  <SelectItem value="Sales">Sales</SelectItem>
+                  <SelectItem value="Operations">Operations</SelectItem>
+                  <SelectItem value="Accounts">Accounts</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button className="w-full" onClick={handleAddEmployee}>
+              {editingId ? "Update Employee" : "Add Employee"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
