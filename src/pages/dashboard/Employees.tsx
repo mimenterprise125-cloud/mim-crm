@@ -52,10 +52,21 @@ export default function Employees() {
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'PGRST116') {
+          toast({ 
+            title: "Info", 
+            description: "Employees table not yet created. Please run migrations.",
+            variant: "default"
+          });
+        } else {
+          throw error;
+        }
+      }
       
       setEmployees(data || []);
     } catch (error) {
+      console.error('Error loading employees:', error);
       toast({ 
         title: "Error", 
         description: "Failed to load employees", 
@@ -74,15 +85,18 @@ export default function Employees() {
         .select("*")
         .order("date", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'PGRST116') {
+          console.log('Attendance table not yet created');
+        } else {
+          throw error;
+        }
+      }
       
       setAttendance(data || []);
     } catch (error) {
-      toast({ 
-        title: "Error", 
-        description: "Failed to load attendance records", 
-        variant: "destructive" 
-      });
+      console.error('Error loading attendance:', error);
+      // Don't show error toast for attendance failures
     }
   };
 
